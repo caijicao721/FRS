@@ -34,10 +34,10 @@ public class Invoice {
     private Integer money;
 
     @ApiModelProperty("是否有发票")
-    private Integer has_bill;
+    private Integer hasBill;
 
     @ApiModelProperty("发票日期")
-    private Date bill_date;
+    private Date billDate;
 
     @ApiModelProperty("增值税号")
     private String vat;

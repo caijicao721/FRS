@@ -543,3 +543,361 @@ public class Reimburse {
 }
 ```
 
+# 编写Dao层
+
+dao层即调用数据库层
+
+先编写Dao接口
+
+## 用户表Dao接口UserMapper
+
+```java
+package com.cao.frs.dao;
+import com.cao.frs.entities.User;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
+import java.util.Map;
+@Mapper
+public interface UserMapper {
+
+    int add(User user);
+
+    int remove(int id);
+
+    int update(Map<String,Object> map);
+
+    List<User> findAll();
+
+}
+```
+
+## UserMapper接口对应的mybatis映射文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cao.frs.dao.UserMapper">
+    <!--    定义命名空间-->
+    <!--    自定义结果映射集 column是数据库字段，property是实体类属性
+    jdbcType可以不加
+    -->
+    <resultMap id="UserResultMap" type="com.cao.frs.entities.User" >
+        <id column="id" property="id"/>
+        <result column="city" property="city" jdbcType="VARCHAR" />
+        <result column="nickname" property="nickname" jdbcType="VARCHAR" />
+        <result column="username" property="username" jdbcType="VARCHAR" />
+        <result column="password" property="password"/>
+        <result column="birthday" property="birthday" jdbcType="TIMESTAMP" />
+        <result column="is_admin" property="isAdmin" jdbcType="INTEGER" />
+        <result column="telephone" property="telephone" jdbcType="VARCHAR" />
+        <result column="email" property="email" jdbcType="VARCHAR" />
+        <result column="limit" property="limit"/>
+    </resultMap>
+        <delete id="remove" parameterType="int">
+            delete from frs.users where id=#{id}
+        </delete>
+        <!--        查询所有用户-->
+        <select id="findAll" resultMap="UserResultMap">
+            select * from frs.users
+        </select>
+        <!--        增加一个用户-->
+        <insert id="add" parameterType="com.cao.frs.entities.User">
+            insert into frs.users VALUES (#{id},
+                                          #{city},
+                                          #{birthday},
+                                          #{email},
+                                          #{isAdmin},
+                                          #{nickname},
+                                          #{password},
+                                          #{telephone},
+                                          #{username},
+                                          #{limit}
+                                          )
+        </insert>
+<!--    更新一个用户-->
+    <update id="update" parameterType="map">
+        update frs.users
+        <set>
+            <if test="city!=null and city!=''">
+                city=#{city},
+            </if>
+            <if test="birthday!=null">
+                birthday=#{birthday},
+            </if>
+            <if test="email!=null and email!=''">
+                email=#{email},
+            </if>
+            <if test="isAdmin!=null">
+                is_admin=#{isAdmin},
+            </if>
+            <if test="nickname != null and nickname != ''">
+                nickname = #{nickname},
+            </if>
+            <if test="password != null and password != ''">
+                password = #{password},
+            </if>
+            <if test="telephone!=null and telephone!=''">
+                telphone=#{telephone},
+            </if>
+            <if test="username != null and username != ''">
+                username = #{username},
+            </if>
+            <if test="limit!= null">
+                `limit` = #{limit},
+            </if>
+        </set>
+            where id=#{id}
+    </update>
+</mapper>
+```
+
+## 报销申请表Dao接口InvoiceMapper
+
+```java
+package com.cao.frs.dao;
+
+import com.cao.frs.entities.Invoice;
+import org.apache.ibatis.annotations.Mapper;
+import org.springframework.stereotype.Component;
+
+
+import java.util.List;
+import java.util.Map;
+
+@Mapper
+@Component
+public interface InvoiceMapper {
+
+
+    int add(Invoice invoice);
+
+    int remove(Integer id);
+
+    int update(Map<String,Object> map);
+
+    List<Invoice> findAll();
+
+    List<Invoice> searchByName(String name);
+}
+```
+
+## InvoiceMapper接口对应的xml映射文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cao.frs.dao.InvoiceMapper">
+    <!--    定义命名空间-->
+    <!--    自定义结果映射集 column是数据库字段，property是实体类属性
+    jdbcType可以不加
+    -->
+    <resultMap id="InvoiceMap" type="com.cao.frs.entities.Invoice" >
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="type" property="type"/>
+        <result column="money" property="money"/>
+        <result column="has_bill" property="hasBill"/>
+        <result column="bill_date" property="billDate"/>
+        <result column="VAT" property="vat"/>
+        <result column="title" property="title"/>
+    </resultMap>
+    <delete id="remove" parameterType="int">
+        delete from frs.invoice where id=#{id}
+    </delete>
+    <!--        查询所有申请-->
+    <select id="findAll" resultMap="InvoiceMap">
+        select * from frs.invoice
+    </select>
+    <!--        增加一条申请-->
+    <insert id="add" parameterType="com.cao.frs.entities.Invoice">
+        insert into frs.invoice VALUES (#{id},
+                                      #{name},
+                                      #{type},
+                                      #{money},
+                                      #{hasBill},
+                                      #{billDate},
+                                      #{vat},
+                                      #{title}
+                                     )
+    </insert>
+    <!--    更新一条申请-->
+    <update id="update" parameterType="map">
+        update frs.invoice
+        <set>
+            <if test="name!=null and name!=''">
+                name=#{name},
+            </if>
+            <if test="type!=null and type!=''">
+                type=#{type},
+            </if>
+            <if test="money!=null">
+                money=#{money},
+            </if>
+            <if test="hasBill!=null">
+                has_bill=#{hasBill},
+            </if>
+            <if test="billDate != null">
+                bill_date = #{billDate},
+            </if>
+            <if test="vat != null and vat != ''">
+                VAT = #{vat},
+            </if>
+            <if test="title!=null and title!=''">
+                title=#{title},
+            </if>
+        </set>
+        where id=#{id}
+    </update>
+<!--    根据名字查询报销申请记录-->
+    <select id="searchByName" resultMap="InvoiceMap">
+        select * from frs.invoice where name=#{name}
+    </select>
+</mapper>
+```
+
+##　报销记录表Dao接口ReimburseMapper
+
+```java 
+package com.cao.frs.dao;
+
+import com.cao.frs.entities.Reimburse;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
+@Mapper
+public interface ReimburseMapper {
+
+    int add(Reimburse reimburse);
+
+    List<Reimburse> findAll();
+
+    List<Reimburse>  searchByUserId(Integer userId);
+}
+```
+
+## ReimburseMapper接口映射xml文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cao.frs.dao.ReimburseMapper">
+        <resultMap id="ReimburseMap" type="com.cao.frs.entities.Reimburse">
+            <id column="id" property="id"/>
+            <result column="user_id" property="userId"/>
+            <result column="create_time" property="createTime"/>
+            <result column="end_time" property="endTime"/>
+            <result column="operate_id" property="operateId"/>
+            <result column="money" property="money"/>
+        </resultMap>
+<!--    增加一条报销记录-->
+    <insert id="add" parameterType="com.cao.frs.entities.Reimburse">
+        insert into frs.remiburse
+        values (#{id},
+                #{userId},
+                #{createTime},
+                #{endTime},
+                #{operateId},
+                #{money}
+                );
+    </insert>
+<!--    根据用户申请id查询报销记录-->
+    <select id="searchByUserId" resultMap="ReimburseMap">
+        select * from frs.remiburse where user_id=#{userId}
+    </select>
+<!--    查询所有报销记录-->
+    <select id="findAll" resultMap="ReimburseMap">
+        select * from frs.remiburse
+    </select>
+</mapper>
+```
+
+# 测试Dao接口是否有问题
+
+利用测试类来看dao层是否有问题，分别用三个测试方法测试三个dao接口。
+
+ 测试类如下：
+
+```java 
+package com.cao.frs;
+
+import com.cao.frs.dao.InvoiceMapper;
+import com.cao.frs.dao.ReimburseMapper;
+import com.cao.frs.dao.UserMapper;
+import com.cao.frs.entities.Invoice;
+import com.cao.frs.entities.Reimburse;
+import com.cao.frs.entities.User;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+
+@SpringBootTest
+class FrsApplicationTests {
+
+    @Autowired
+    UserMapper userMapper;
+    @Autowired
+    InvoiceMapper invoiceMapper;
+    @Autowired
+    ReimburseMapper reimburseMapper;
+    @Test
+    void contextLoads() {
+        userMapper.remove(4);
+        userMapper.add(new User(4,"北京",new Date(),"123@13.com",1,"教授","123","12354566","pro",200));
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("id",1);
+        map.put("city","天津");
+        map.put("isAdmin",0);
+        map.put("limit",500);
+        userMapper.update(map);
+        List<User> all = userMapper.findAll();
+        for (User user : all) {
+            System.out.println(user);
+        }
+
+
+
+    }
+    @Test
+    void test1(){
+        invoiceMapper.add(new Invoice(6,"小绿","交通",200,1,new Date(),"122122Ad","xxxx大学"));
+        List<Invoice> list1 = invoiceMapper.searchByName("小红");
+        for (Invoice invoice : list1) {
+            System.out.println(invoice.toString());
+        }
+        invoiceMapper.remove(6);
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("id",1);
+        map.put("name","小了");
+        map.put("type","教育");
+        map.put("hasBill",0);
+        map.put("billDate",new Date());
+        map.put("title","xxxxx小学");
+        invoiceMapper.update(map);
+        List<Invoice> all = invoiceMapper.findAll();
+        for (Invoice invoice : all) {
+            System.out.println(invoice);
+        }
+
+    }
+    @Test
+    void test2(){
+        reimburseMapper.add(new Reimburse(5,2,new Date(1111111),new Date(),3,500));
+        List<Reimburse> reimburses = reimburseMapper.searchByUserId(2);
+        for (Reimburse reimburs : reimburses) {
+            System.out.println(reimburs);
+        }
+        List<Reimburse> all = reimburseMapper.findAll();
+        for (Reimburse reimburse : all) {
+            System.out.println(reimburse);
+        }
+    }
+}
+```
+
+
+

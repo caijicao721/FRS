@@ -19,10 +19,10 @@ spring:
 server:
   port: 8080
 
-##mybatis设置
-#mybatis:
-#  #映射文件位置
-#  config-location: classpath:mapper/*.xml
-#  configuration:
-#  #日志实现类
-#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+#mybatis设置
+mybatis:
+  #映射文件位置
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+  #日志实现类
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cao.frs.dao.ReimburseMapper">
+        <resultMap id="ReimburseMap" type="com.cao.frs.entities.Reimburse">
+            <id column="id" property="id"/>
+            <result column="user_id" property="userId"/>
+            <result column="create_time" property="createTime"/>
+            <result column="end_time" property="endTime"/>
+            <result column="operate_id" property="operateId"/>
+            <result column="money" property="money"/>
+        </resultMap>
+<!--    增加一条报销记录-->
+    <insert id="add" parameterType="com.cao.frs.entities.Reimburse">
+        insert into frs.remiburse
+        values (#{id},
+                #{userId},
+                #{createTime},
+                #{endTime},
+                #{operateId},
+                #{money}
+                );
+    </insert>
+<!--    根据用户申请id查询报销记录-->
+    <select id="searchByUserId" resultMap="ReimburseMap">
+        select * from frs.remiburse where user_id=#{userId}
+    </select>
+<!--    查询所有报销记录-->
+    <select id="findAll" resultMap="ReimburseMap">
+        select * from frs.remiburse
+    </select>
+</mapper>

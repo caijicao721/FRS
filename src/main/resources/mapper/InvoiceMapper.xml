@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cao.frs.dao.InvoiceMapper">
+    <!--    定义命名空间-->
+    <!--    自定义结果映射集 column是数据库字段，property是实体类属性
+    jdbcType可以不加
+    -->
+    <resultMap id="InvoiceMap" type="com.cao.frs.entities.Invoice" >
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="type" property="type"/>
+        <result column="money" property="money"/>
+        <result column="has_bill" property="hasBill"/>
+        <result column="bill_date" property="billDate"/>
+        <result column="VAT" property="vat"/>
+        <result column="title" property="title"/>
+    </resultMap>
+    <delete id="remove" parameterType="int">
+        delete from frs.invoice where id=#{id}
+    </delete>
+    <!--        查询所有申请-->
+    <select id="findAll" resultMap="InvoiceMap">
+        select * from frs.invoice
+    </select>
+    <!--        增加一条申请-->
+    <insert id="add" parameterType="com.cao.frs.entities.Invoice">
+        insert into frs.invoice VALUES (#{id},
+                                      #{name},
+                                      #{type},
+                                      #{money},
+                                      #{hasBill},
+                                      #{billDate},
+                                      #{vat},
+                                      #{title}
+                                     )
+    </insert>
+    <!--    更新一条申请-->
+    <update id="update" parameterType="map">
+        update frs.invoice
+        <set>
+            <if test="name!=null and name!=''">
+                name=#{name},
+            </if>
+            <if test="type!=null and type!=''">
+                type=#{type},
+            </if>
+            <if test="money!=null">
+                money=#{money},
+            </if>
+            <if test="hasBill!=null">
+                has_bill=#{hasBill},
+            </if>
+            <if test="billDate != null">
+                bill_date = #{billDate},
+            </if>
+            <if test="vat != null and vat != ''">
+                VAT = #{vat},
+            </if>
+            <if test="title!=null and title!=''">
+                title=#{title},
+            </if>
+        </set>
+        where id=#{id}
+    </update>
+<!--    根据名字查询报销申请记录-->
+    <select id="searchByName" resultMap="InvoiceMap">
+        select * from frs.invoice where name=#{name}
+    </select>
+</mapper>

@@ -26,16 +26,16 @@ public class Reimburse {
     private Integer id;
 
     @ApiModelProperty("用户id")
-    private Integer user_id;
+    private Integer userId;
 
     @ApiModelProperty("报销申请时间")
-    private Date create_time;
+    private Date createTime;
 
     @ApiModelProperty("报销结束时间")
-    private Date end_time;
+    private Date endTime;
 
     @ApiModelProperty("操作人id")
-    private Integer operate_id;
+    private Integer operateId;
 
     @ApiModelProperty("报销金额")
     private Integer money;
