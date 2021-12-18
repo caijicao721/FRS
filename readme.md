@@ -3,8 +3,8 @@
 ## 1.先安装git，然后设置用户名和邮箱。
 
 ```git 
-git config --global user.name "min76"
-git config --global user.email "17621778372@163.com"
+git config --global users.name "min76"
+git config --global users.email "17621778372@163.com"
 ```
 
 ==**注意：**git config --global 参数，有了这个参数，表示你这台机器上所有的Git仓库都会使用这个配置，当然你也可以对某个仓库指定的不同的用户名和邮箱。==
@@ -292,12 +292,12 @@ public class MySecurityConfig extends WebSecurityConfigurerAdapter {
 ```yaml
 spring:
   security:
-    user:
+    users:
       name: admin
 	  password: admin
 ```
 
-如果不设置，用户名为'user ',密码为启动时生成的UUID。
+如果不设置，用户名为'users ',密码为启动时生成的UUID。
 
 # 整合Swagger
 
@@ -553,7 +553,7 @@ dao层即调用数据库层
 
 ```java
 package com.cao.frs.dao;
-import com.cao.frs.entities.User;
+import com.cao.frs.entities.Users;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;
@@ -561,13 +561,13 @@ import java.util.Map;
 @Mapper
 public interface UserMapper {
 
-    int add(User user);
+    int add(Users users);
 
     int remove(int id);
 
     int update(Map<String,Object> map);
 
-    List<User> findAll();
+    List<Users> findAll();
 
 }
 ```
@@ -582,7 +582,7 @@ public interface UserMapper {
     <!--    自定义结果映射集 column是数据库字段，property是实体类属性
     jdbcType可以不加
     -->
-    <resultMap id="UserResultMap" type="com.cao.frs.entities.User" >
+    <resultMap id="UserResultMap" type="com.cao.frs.entities.Users" >
         <id column="id" property="id"/>
         <result column="city" property="city" jdbcType="VARCHAR" />
         <result column="nickname" property="nickname" jdbcType="VARCHAR" />
@@ -602,7 +602,7 @@ public interface UserMapper {
             select * from frs.users
         </select>
         <!--        增加一个用户-->
-        <insert id="add" parameterType="com.cao.frs.entities.User">
+        <insert id="add" parameterType="com.cao.frs.entities.Users">
             insert into frs.users VALUES (#{id},
                                           #{city},
                                           #{birthday},
@@ -826,7 +826,7 @@ import com.cao.frs.dao.ReimburseMapper;
 import com.cao.frs.dao.UserMapper;
 import com.cao.frs.entities.Invoice;
 import com.cao.frs.entities.Reimburse;
-import com.cao.frs.entities.User;
+import com.cao.frs.entities.Users;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -855,8 +855,8 @@ class FrsApplicationTests {
         map.put("limit",500);
         userMapper.update(map);
         List<User> all = userMapper.findAll();
-        for (User user : all) {
-            System.out.println(user);
+        for (User users : all) {
+            System.out.println(users);
         }
 
 

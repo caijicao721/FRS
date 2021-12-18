@@ -18,7 +18,7 @@ import java.util.Date;
 @ApiModel("用户实体类")
 @Entity //JPA实体类
 @Table(name = "users") //当实体类名与数据库表类型不一样的添加注解
-public class User {
+public class Users {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

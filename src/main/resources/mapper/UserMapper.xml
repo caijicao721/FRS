@@ -5,7 +5,7 @@
     <!--    自定义结果映射集 column是数据库字段，property是实体类属性
     jdbcType可以不加
     -->
-    <resultMap id="UserResultMap" type="com.cao.frs.entities.User" >
+    <resultMap id="UserResultMap" type="com.cao.frs.entities.Users" >
         <id column="id" property="id"/>
         <result column="city" property="city" jdbcType="VARCHAR" />
         <result column="nickname" property="nickname" jdbcType="VARCHAR" />
@@ -25,7 +25,7 @@
             select * from frs.users
         </select>
         <!--        增加一个用户-->
-        <insert id="add" parameterType="com.cao.frs.entities.User">
+        <insert id="add" parameterType="com.cao.frs.entities.Users">
             insert into frs.users VALUES (#{id},
                                           #{city},
                                           #{birthday},
@@ -72,4 +72,7 @@
         </set>
             where id=#{id}
     </update>
+    <select id="findByName" resultMap="UserResultMap">
+        select * from frs.users where username=#{name}
+    </select>
 </mapper>
