@@ -13,4 +13,6 @@ public interface UserService {
     int update(Map<String,Object> map);
 
     List<Users> findAll();
+
+    Users findByName(String username);
 }

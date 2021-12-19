@@ -57,19 +57,17 @@
 						</li>
 
 						<li class="menu-item">
-							<a href="javascript:;">报销管理<i class="icon-keyboard_arrow_left"></i></a>
+							<a href="javascript:;" id="invoice-manage">报销管理<i class="icon-keyboard_arrow_left"></i></a>
 							<ul>
-								<li><a id="book-list" href="javascript:page('book/book-list');">图书列表</a></li>
-								<li><a id="add-book" href="javascript:page('book/book-add');">图书上架</a></li>
+								<li><a id="add-invoice" href="javascript:page('invoice/add');">添加报销申请</a></li>
+								<li><a id="update-invoice" href="javascript:page('invoice/update');">修改报销信息</a></li>
 							</ul>
 						</li>
 
 						<li class="menu-item">
-							<a href="javascript:;">审批管理<i class="icon-keyboard_arrow_left"></i></a>
+							<a href="javascript:;" id="check-manage">审批管理<i class="icon-keyboard_arrow_left"></i></a>
 							<ul>
-								<li><a id="book-search" href="javascript:page('borrow/book-search');">搜索图书</a></li>
-								<li><a id="book-borrow" href="javascript:page('borrow/borrow');">借阅图书</a></li>
-								<li><a id="book-back" href="javascript:page('borrow/back');">归还图书</a></li>
+								<li><a id="invoice-list" href="javascript:page('invoice/todo');">待审批报销记录</a></li>
 							</ul>
 						</li>
 
@@ -78,7 +76,22 @@
 							<a href="javascript:;">用户中心<i class="icon-keyboard_arrow_left"></i></a>
 							<ul>
 								<li><a id="user-info" href="javascript:page('user/user-info');">个人信息</a></li>
-								<li><a id="user-manage" href="javascript:page('user/user-list');">修改信息</a></li>
+								<li><a id="user-update" href="javascript:page('user/update');">修改信息</a></li>
+							</ul>
+						</li>
+						<li class="menu-item">
+							<a href="javascript:;" id="user-manage">用户管理<i class="icon-keyboard_arrow_left"></i></a>
+							<ul>
+								<li><a id="user-add" href="javascript:page('user/add');">添加用户</a></li>
+								<li><a id="user-delete" href="javascript:page('user/delete');">删除用户</a></li>
+								<li><a id="user-list" href="javascript:page('user/user-list');">所有用户列表</a></li>
+							</ul>
+						</li>
+						<li class="menu-item">
+							<a href="javascript:;">报销记录查询<i class="icon-keyboard_arrow_left"></i></a>
+							<ul>
+								<li><a id="reimburse-list" href="javascript:page('reimburse/list');">所有报销记录</a></li>
+								<li><a id="reimburse-currList" href="javascript:page('reimburse/currList');">已完成报销记录</a></li>
 							</ul>
 						</li>
 					</ul>
@@ -89,8 +102,8 @@
 
 	<!--iframe载入内容-->
 	<div class="admin-markdown">
-		<span style="color: #00a1d6;font-size: 100px;">
-			欢迎进入财务报销系统
+		<span style="color: #00a1d6;font-size: 30px;">
+			欢迎进入财务报销系统！
 		</span>
 
 	</div>
@@ -126,25 +139,32 @@
 
 	$(document).ready(function(){
 		// 页面一加载, 读取登录用户信息, 进行权限限制
-		$.get("/user/currUser", function(data){
-			var code = data.code;
-			var user = data.data;
-			if (code == 200) {
+		$.get("/user/currUser", function(user){
 				// 设置用户昵称
 				$("#nickname").text(user.nickname);
 				// 根据用户权限, 控制用户可见菜单
 				var auth = user.isAdmin;
-				if (auth != 0) {
+				if (auth == 0) {
 					console.log(auth);
 					// 若为普通用户权限, 则无法访问修改类菜单 无法添加图书,添加读者,管理用户以及添加管理员
-					$("#add-book").hide();
-					$("#reader-add").hide();
+					$("#user-info").hide();
+					$("#user-add").hide();
+					$("#user-delete").hide();
+					$("#user-list").hide();
+					$("#reimburse-list").hide();
+					$("#reimburse-searchByName").hide();
+					$("#invoice-list").hide();
 					$("#user-manage").hide();
-					$("#admin-add").hide();
+					$("#check-manage").hide();
+				}else{
+					$("#reimburse-currList").hide();
+					$("#invoice-manage").hide();
+					$("#add-invoice").hide();
+					$("#update-invoice").hide();
 				}
-			}
+			//}
 
-			return false;
+			//return false;
 		});
 	});
 </script>

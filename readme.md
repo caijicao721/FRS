@@ -899,5 +899,641 @@ class FrsApplicationTests {
 }
 ```
 
+# 搭建service层
 
+## service接口
+
+InvoiceService
+
+```java 
+package com.cao.frs.repos;
+
+import com.cao.frs.entities.Users;
+
+import java.util.List;
+import java.util.Map;
+
+public interface UserService {
+    int add(Users users);
+
+    int remove(int id);
+
+    int update(Map<String,Object> map);
+
+    List<Users> findAll();
+
+    Users findByName(String username);
+}
+
+```
+
+ReimburseService
+
+```java 
+package com.cao.frs.repos;
+
+import com.cao.frs.entities.Users;
+
+import java.util.List;
+import java.util.Map;
+
+public interface UserService {
+    int add(Users users);
+
+    int remove(int id);
+
+    int update(Map<String,Object> map);
+
+    List<Users> findAll();
+
+    Users findByName(String username);
+}
+
+```
+
+UserService
+
+```java 
+package com.cao.frs.repos;
+
+import com.cao.frs.entities.Users;
+
+import java.util.List;
+import java.util.Map;
+
+public interface UserService {
+    int add(Users users);
+
+    int remove(int id);
+
+    int update(Map<String,Object> map);
+
+    List<Users> findAll();
+
+    Users findByName(String username);
+}
+```
+
+## 对应实现类
+
+InvoiceServiceImpl
+
+```java 
+package com.cao.frs.service;
+
+import com.cao.frs.dao.InvoiceMapper;
+import com.cao.frs.entities.Invoice;
+import com.cao.frs.repos.InvoiceService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+@Service
+public class InvoiceServiceImpl implements InvoiceService {
+    @Autowired
+    InvoiceMapper invoiceMapper;
+    @Override
+    public int add(Invoice invoice) {
+        return invoiceMapper.add(invoice);
+    }
+
+    @Override
+    public int remove(Integer id) {
+        return invoiceMapper.remove(id);
+    }
+
+    @Override
+    public int update(Map<String, Object> map) {
+        return invoiceMapper.update(map);
+    }
+
+    @Override
+    public List<Invoice> findAll() {
+        return invoiceMapper.findAll();
+    }
+
+    @Override
+    public List<Invoice> searchByName(String name) {
+        return invoiceMapper.searchByName(name);
+    }
+}
+
+```
+
+ReimburseSeviceImpl
+
+```java 
+package com.cao.frs.service;
+
+import com.cao.frs.dao.ReimburseMapper;
+import com.cao.frs.entities.Reimburse;
+import com.cao.frs.repos.ReimburseService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+@Service
+public class ReimburseSeviceImpl implements ReimburseService {
+    @Autowired
+    private ReimburseMapper reimburseMapper;
+    @Override
+    public int add(Reimburse reimburse) {
+        return reimburseMapper.add(reimburse);
+    }
+
+    @Override
+    public List<Reimburse> findAll() {
+        return reimburseMapper.findAll();
+    }
+
+    @Override
+    public List<Reimburse> searchByUserId(Integer userId) {
+        return reimburseMapper.searchByUserId(userId);
+    }
+}
+
+```
+
+UserSecurityDetailService
+
+## **==注意：与security的搭建结合，更新springSecurity的配置==**
+
+```java
+package com.cao.frs.service;
+
+import com.cao.frs.dao.UserMapper;
+import org.springframework.security.core.userdetails.User;
+import com.cao.frs.repos.UserService;
+import com.cao.frs.entities.Users;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class UserSecurityDetailService implements UserDetailsService, UserService {
+
+    @Autowired
+    UserMapper userMapper;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        Users user = userMapper.findByName(username);
+        System.out.println(user);
+        // 获得角色
+        String role = String.valueOf(user.getIsAdmin());
+        // 角色集合
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        // 角色必须以`ROLE_`开头，数据库中没有，则在这里加
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+        // 数据库密码是明文, 需要加密进行比对
+        return new User(user.getUsername(), passwordEncoder.encode(user.getPassword()),authorities);
+    }
+
+
+    @Override
+    public int add(Users user) {
+        return userMapper.add(user);
+    }
+
+    @Override
+    public int remove(int id) {
+        return userMapper.remove(id);
+    }
+
+    @Override
+    public int update(Map<String, Object> map) {
+        return userMapper.update(map);
+    }
+
+    @Override
+    public List<Users> findAll() {
+        return userMapper.findAll();
+    }
+
+    @Override
+    public Users findByName(String username) {
+        return userMapper.findByName(username);
+    }
+}
+
+```
+
+## 新安全配置
+
+```java
+package com.cao.frs.configuration;
+
+import com.cao.frs.service.UserSecurityDetailService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+@EnableWebSecurity
+public class MySecurityConfig extends WebSecurityConfigurerAdapter {
+    @Autowired
+    private UserSecurityDetailService userSecurityDetailService;
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        //授权
+        http.formLogin()
+                //自定义登陆页面
+                .loginPage("/login")
+                //如果URL为loginPage,则用SpringSecurity中自带的过滤器去处理该请求
+                .successForwardUrl("/index")
+                .loginProcessingUrl("/use/login")
+                .and()
+                //请求授权
+                .authorizeRequests()
+                //在访问我们的URL时，我们是不需要省份认证，可以立即访问
+                .antMatchers("/javaex/**","/","/favicon.ico","/login","/user/login").permitAll()
+                //所有请求都被拦截，都需认证
+                .anyRequest().authenticated()
+                .and()
+                // 请求头允许X-ContentType-Options
+                //.headers().contentTypeOptions().disable()
+                //.and()
+                // 请求头允许X-Frame-Options, 否则所有iframe将失效
+                .headers().frameOptions().disable()
+                .and()
+                // 注销, 回到首页
+                .logout().logoutSuccessUrl("/")
+                //SpringSecurity保护机制
+                .and()
+                .csrf().disable();
+
+        // 开启记住我功能
+        http.rememberMe();
+                //.rememberMeParameter("remember");
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        // 认证
+        auth.userDetailsService(userSecurityDetailService).passwordEncoder(passwordEncoder());
+    }
+    @Override
+    public void configure(WebSecurity web) throws Exception {
+        // swagger 资源放行
+        web.ignoring().antMatchers("/webjars/**","/v2/**","/swagger-resources/**","/doc.html","/docs.html","swagger-ui.html");
+    }
+    @Bean
+    public PasswordEncoder passwordEncoder(){
+        // 使用BCrypt加密密码
+        return new BCryptPasswordEncoder();
+    }
+}
+
+```
+
+# 与前端结合
+
+## 登陆界面
+
+```html 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta charset="utf-8">
+    <!-- 标题栏LOGO -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <!--字体图标-->
+    <link href="../javaex/pc/css/icomoon.css" rel="stylesheet" />
+    <!--动画-->
+    <link href="../javaex/pc/css/animate.css" rel="stylesheet" />
+    <!--骨架样式-->
+    <link href="../javaex/pc/css/common.css" rel="stylesheet" />
+    <!--皮肤（缇娜）-->
+    <link href="../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+    <!--jquery，不可修改版本-->
+    <script src="../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+    <!--全局动态修改-->
+    <script src="../javaex/pc/js/common.js"></script>
+    <!--核心组件-->
+    <script src="../javaex/pc/js/javaex.min.js"></script>
+    <!--表单验证-->
+    <script src="../javaex/pc/js/javaex-formVerify.js"></script>
+    <title>后台管理</title>
+    <style>
+        .bg-wrap, body, html {height: 100%;}
+        input{line-height: normal;-webkit-appearance: textfield;background-color: white;-webkit-rtl-ordering: logical;cursor: text;padding: 1px;border-width: 2px;border-style: inset;border-color: initial;border-image: initial;}
+        input[type="text"], input[type="password"]{border: 0;outline: 0;}
+        input, button{text-rendering: auto;color: initial;letter-spacing: normal;word-spacing: normal;text-transform: none;text-indent: 0px;text-shadow: none;display: inline-block;text-align: start;margin: 0em;font: 400 13.3333px Arial;}
+        input[type=button]{-webkit-appearance: button;cursor: pointer;}
+        .bg-wrap {position: relative;background: url(http://img.javaex.cn/FipOsQoe90u_7i3dOVpaeX5QD7c6) top left no-repeat;background-size: cover;overflow: hidden;}
+        .main-cont-wrap{z-index: 1;position: absolute;top: 50%;left: 50%;margin-left: -190px;margin-top: -255px;box-sizing: border-box;width: 380px;padding: 30px 30px 40px;background: #fff;box-shadow: 0 20px 30px 0 rgba(63,63,65,.06);border-radius: 10px;}
+        .form-title{margin-bottom: 40px;}
+        .form-title>span{font-size: 20px;color: #2589ff;}
+        .form-item{margin-bottom: 30px;position: relative;height: 40px;line-height: 40px;border-bottom: 1px solid #e3e3e3;box-sizing: border-box;}
+        .form-txt{display: inline-block;width: 70px;color: #595961;font-size: 14px;margin-right: 10px;}
+        .form-input{border: 0;outline: 0;font-size: 14px;color: #595961;width: 155px;}
+        .form-btn{margin-top: 40px;}
+        .ui-button{display: block;width: 320px;height: 50px;text-align: center;color: #fff;background: #2589ff;border-radius: 6px;font-size: 16px;border: 0;outline: 0;}
+    </style>
+</head>
+<body>
+<div class="bg-wrap">
+    <div class="main-cont-wrap login-model">
+        <form id="form">
+            <div class="form-title">
+                <span>财务报销管理系统</span>
+            </div>
+            <div class="form-item">
+                <span class="form-txt">账号：</span>
+                <input type="text" class="form-input original" id="uname" name="loginName" placeholder="请输入账号" data-type="必填" error-pos="32" />
+            </div>
+            <div class="form-item">
+                <span class="form-txt">密码：</span>
+                <input type="password" class="form-input original" name="password" id="pass" placeholder="请输入密码" data-type="必填" error-pos="32" />
+            </div>
+            <div class="form-item">
+                <input type="checkbox" id="remember" name="remember" class="fill"/> 记住我
+            </div>
+            <div class="form-btn">
+                <input type="button" class="ui-button" id="save" value="登录" />
+            </div>
+        </form>
+    </div>
+</div>
+<script type="text/javascript">
+    // 登录
+    $("#save").on("click", function(){
+        var username =  $("#uname").val();
+        var password =  $("#pass").val();
+        // 记住我
+        var remember = $("#remember").val();
+
+        $.post("/use/login",{"username":username,"password": password,"remember":remember},function(result) {
+            // 由于SpringSecurity 框架返回的是HTML页面, 所以使用js形式登录只能以html页面元素判定是否登录成功
+            var index = result.indexOf("remember");
+            if (index>0) {
+                // 提示登录失败
+                javaex.optTip({
+                    content : "用户名或密码错误!",
+                    type : "error"
+                });
+            }else {
+                // 登录成功 跳转首页
+                window.location.href="/index";
+            }
+
+        });
+    });
+</script>
+</body>
+</html>
+```
+
+## 首页定制
+
+```html 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<meta charset="utf-8">
+	<!-- 标题栏LOGO -->
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<!--字体图标-->
+	<link href="../javaex/pc/css/icomoon.css" rel="stylesheet" />
+	<!--动画-->
+	<link href="../javaex/pc/css/animate.css" rel="stylesheet" />
+	<!--骨架样式-->
+	<link href="../javaex/pc/css/common.css" rel="stylesheet" />
+	<!--皮肤（缇娜）-->
+	<link href="../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+	<!--jquery，不可修改版本-->
+	<script src="../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+	<!--全局动态修改-->
+	<script src="../javaex/pc/js/common.js"></script>
+	<!--核心组件-->
+	<script src="../javaex/pc/js/javaex.min.js"></script>
+	<!--表单验证-->
+	<script src="../javaex/pc/js/javaex-formVerify.js"></script>
+	<title>后台管理</title>
+	<style>
+	</style>
+</head>
+<body>
+<!--顶部导航-->
+<div class="admin-navbar">
+	<div class="admin-container-fluid clear">
+		<!--logo名称-->
+		<div class="admin-logo">报销管理系统</div>
+
+		<!--右侧-->
+		<ul class="admin-navbar-nav fr">
+			<li>
+				<a href="javascript:;">欢迎您，<span id="nickname">用户</span></a>
+				<ul class="dropdown-menu" style="right: 10px;">
+					<li><a href="/logout">退出当前账号</a></li>
+				</ul>
+			</li>
+		</ul>
+	</div>
+</div>
+
+<!--主题内容-->
+<div class="admin-mian">
+	<!--左侧菜单-->
+	<div class="admin-aside admin-aside-fixed">
+		<!-- 应用标题  -->
+		<div id="admin-toc" class="admin-toc">
+			<div class="menu-box">
+				<div id="menu" class="menu">
+					<ul>
+						<li class="menu-item hover">
+							<a href="javascript:page('welcome');"><i class="icon-home2"></i>首页</a>
+						</li>
+
+						<li class="menu-item">
+							<a href="javascript:;" id="invoice-manage">报销管理<i class="icon-keyboard_arrow_left"></i></a>
+							<ul>
+								<li><a id="add-invoice" href="javascript:page('invoice/add');">添加报销申请</a></li>
+								<li><a id="update-invoice" href="javascript:page('invoice/update');">修改报销信息</a></li>
+							</ul>
+						</li>
+
+						<li class="menu-item">
+							<a href="javascript:;" id="check-manage">审批管理<i class="icon-keyboard_arrow_left"></i></a>
+							<ul>
+								<li><a id="invoice-list" href="javascript:page('invoice/todo');">待审批报销记录</a></li>
+							</ul>
+						</li>
+
+
+						<li class="menu-item">
+							<a href="javascript:;">用户中心<i class="icon-keyboard_arrow_left"></i></a>
+							<ul>
+								<li><a id="user-info" href="javascript:page('user/user-info');">个人信息</a></li>
+								<li><a id="user-update" href="javascript:page('user/update');">修改信息</a></li>
+							</ul>
+						</li>
+						<li class="menu-item">
+							<a href="javascript:;" id="user-manage">用户管理<i class="icon-keyboard_arrow_left"></i></a>
+							<ul>
+								<li><a id="user-add" href="javascript:page('user/add');">添加用户</a></li>
+								<li><a id="user-delete" href="javascript:page('user/delete');">删除用户</a></li>
+								<li><a id="user-list" href="javascript:page('user/user-list');">所有用户列表</a></li>
+							</ul>
+						</li>
+						<li class="menu-item">
+							<a href="javascript:;">报销记录查询<i class="icon-keyboard_arrow_left"></i></a>
+							<ul>
+								<li><a id="reimburse-list" href="javascript:page('reimburse/list');">所有报销记录</a></li>
+								<li><a id="reimburse-currList" href="javascript:page('reimburse/currList');">已完成报销记录</a></li>
+							</ul>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!--iframe载入内容-->
+	<div class="admin-markdown">
+		<span style="color: #00a1d6;font-size: 30px;">
+			欢迎进入财务报销系统！
+		</span>
+
+	</div>
+</div>
+</body>
+<script>
+	var hightUrl = "xxxx";
+	javaex.menu({
+		id : "menu",
+		isAutoSelected : true,
+		key : "",
+		url : hightUrl
+	});
+
+	$(function() {
+		// 设置左侧菜单高度
+		setMenuHeight();
+	});
+
+	/**
+	 * 设置左侧菜单高度
+	 */
+	function setMenuHeight() {
+		var height = document.documentElement.clientHeight - $("#admin-toc").offset().top;
+		height = height - 10;
+		$("#admin-toc").css("height", height+"px");
+	}
+
+	// 控制页面载入
+	function page(url) {
+		$("#page").attr("src", url);
+	}
+
+	$(document).ready(function(){
+		// 页面一加载, 读取登录用户信息, 进行权限限制
+		$.get("/user/currUser", function(user){
+				// 设置用户昵称
+				$("#nickname").text(user.nickname);
+				// 根据用户权限, 控制用户可见菜单
+				var auth = user.isAdmin;
+				if (auth == 0) {
+					console.log(auth);
+					// 若为普通用户权限, 则无法访问修改类菜单 无法添加图书,添加读者,管理用户以及添加管理员
+					$("#user-info").hide();
+					$("#user-add").hide();
+					$("#user-delete").hide();
+					$("#user-list").hide();
+					$("#reimburse-list").hide();
+					$("#reimburse-searchByName").hide();
+					$("#invoice-list").hide();
+					$("#user-manage").hide();
+					$("#check-manage").hide();
+				}else{
+					$("#reimburse-currList").hide();
+					$("#invoice-manage").hide();
+					$("#add-invoice").hide();
+					$("#update-invoice").hide();
+				}
+			//}
+
+			//return false;
+		});
+	});
+</script>
+</html>
+```
+
+# error界面配置
+
+```html 
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>404</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+    <!--[if lte IE 9]><link rel="stylesheet" href="assets/css/ie9.css" /><![endif]-->
+    <noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+</head>
+<body>
+
+<!-- Wrapper -->
+<div id="wrapper">
+
+    <!-- Header -->
+    <header id="header">
+        <div class="logo">
+            <span class="icon fa-diamond"></span>
+        </div>
+        <div class="content">
+            <div class="inner">
+                <h1>404</h1>
+                <p><!--[-->对不起，你要找的这个页面突然不见了。不过，放心，一切都在我的掌控之中，不会跑多远！<!--]--></p>
+            </div>
+        </div>
+        <nav>
+            <ul>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main -->
+
+    <!-- Footer -->
+    <footer id="footer">
+        <p class="copyright">Jiaming Cao.<a href="http://www.baidu.com">百度</a>.</p>
+    </footer>
+
+</div>
+
+<!-- BG -->
+<div id="bg" ></div>
+
+<!-- Scripts -->
+<script src="assets/js/jquery.min.js"></script>
+<script src="assets/js/skel.min.js"></script>
+<script src="assets/js/util.js"></script>
+<script src="assets/js/main.js"></script>
+
+</body>
+</html>
+```
+
+# 控制层编写
 

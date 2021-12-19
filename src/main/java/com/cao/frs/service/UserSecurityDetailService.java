@@ -60,4 +60,9 @@ public class UserSecurityDetailService implements UserDetailsService, UserServic
     public List<Users> findAll() {
         return userMapper.findAll();
     }
+
+    @Override
+    public Users findByName(String username) {
+        return userMapper.findByName(username);
+    }
 }
