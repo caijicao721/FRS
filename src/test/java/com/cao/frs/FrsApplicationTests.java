@@ -32,11 +32,8 @@ class FrsApplicationTests {
         map.put("city","天津");
         map.put("isAdmin",0);
         map.put("limit",500);
-        userService.update(map);
-        List<Users> all = userService.findAll();
-        for (Users users : all) {
-            System.out.println(users);
-        }
+        //userService.update(map);
+
 
 
 

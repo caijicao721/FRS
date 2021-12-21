@@ -1,5 +1,6 @@
 package com.cao.frs.service;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.cao.frs.dao.UserMapper;
 import org.springframework.security.core.userdetails.User;
 import com.cao.frs.repos.UserService;
@@ -12,6 +13,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,13 +54,14 @@ public class UserSecurityDetailService implements UserDetailsService, UserServic
     }
 
     @Override
-    public int update(Map<String, Object> map) {
-        return userMapper.update(map);
+    @Transactional(rollbackFor = Exception.class)
+    public int update(Users users) {
+        return userMapper.update(BeanUtil.beanToMap(users));
     }
 
     @Override
-    public List<Users> findAll() {
-        return userMapper.findAll();
+    public List<Users> findByKeywords(String keyword) {
+        return userMapper.findByKeyword(keyword);
     }
 
     @Override

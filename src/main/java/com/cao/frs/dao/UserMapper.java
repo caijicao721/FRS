@@ -14,7 +14,7 @@ public interface UserMapper {
 
     int update(Map<String,Object> map);
 
-    List<Users> findAll();
+    List<Users> findByKeyword(String keyword);
 
     Users findByName(String name);
 

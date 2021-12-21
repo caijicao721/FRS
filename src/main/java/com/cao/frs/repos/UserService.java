@@ -10,9 +10,9 @@ public interface UserService {
 
     int remove(int id);
 
-    int update(Map<String,Object> map);
+    int update(Users users);
 
-    List<Users> findAll();
+    List<Users> findByKeywords(String keyword);
 
     Users findByName(String username);
 }

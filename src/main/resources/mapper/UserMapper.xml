@@ -21,8 +21,13 @@
             delete from frs.users where id=#{id}
         </delete>
         <!--        查询所有用户-->
-        <select id="findAll" resultMap="UserResultMap">
+        <select id="findByKeyword" resultMap="UserResultMap">
             select * from frs.users
+            <where>
+                <if test="_parameter != null and _parameter != ''">
+                    and `username` like CONCAT('%',#{_parameter},'%') or `nickname` like CONCAT('%',#{_parameter},'%')
+                </if>
+            </where>
         </select>
         <!--        增加一个用户-->
         <insert id="add" parameterType="com.cao.frs.entities.Users">

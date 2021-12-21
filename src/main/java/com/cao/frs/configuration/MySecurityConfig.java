@@ -46,7 +46,7 @@ public class MySecurityConfig extends WebSecurityConfigurerAdapter {
 
         // 开启记住我功能
         http.rememberMe();
-                //.rememberMeParameter("remember");
+        //.rememberMeParameter("remember");
     }
 
     @Override
