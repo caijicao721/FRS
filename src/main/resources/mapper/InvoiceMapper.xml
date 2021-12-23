@@ -66,4 +66,9 @@
     <select id="searchByName" resultMap="InvoiceMap">
         select * from frs.invoice where name=#{name}
     </select>
+
+    <!--    根据名字查询报销申请记录-->
+    <select id="searchById" resultMap="InvoiceMap">
+        select * from frs.invoice where id=#{id}
+    </select>
 </mapper>

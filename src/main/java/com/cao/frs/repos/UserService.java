@@ -15,4 +15,8 @@ public interface UserService {
     List<Users> findByKeywords(String keyword);
 
     Users findByName(String username);
+
+    Users findById(Integer id);
+
+    Users findByNickName(String nickname);
 }

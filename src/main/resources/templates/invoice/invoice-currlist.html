@@ -1,0 +1,146 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta charset="utf-8">
+    <!--字体图标-->
+    <link href="../../javaex/pc/css/icomoon.css" rel="stylesheet" />
+    <!--动画-->
+    <link href="../../javaex/pc/css/animate.css" rel="stylesheet" />
+    <!--骨架样式-->
+    <link href="../../javaex/pc/css/common.css" rel="stylesheet" />
+    <!--皮肤（缇娜）-->
+    <link href="../../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+    <!--jquery，不可修改版本-->
+    <script src="../../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+    <!--全局动态修改-->
+    <script src="../../javaex/pc/js/common.js"></script>
+    <!--核心组件-->
+    <script src="../../javaex/pc/js/javaex.min.js"></script>
+    <!--表单验证-->
+    <script src="../../javaex/pc/js/javaex-formVerify.js"></script>
+    <title>后台管理</title>
+</head>
+
+<body>
+<!--主体内容-->
+<div class="list-content">
+    <!--块元素-->
+    <div class="block">
+        <!--页面有多个表格时，可以用于标识表格-->
+        <h2>申请报销列表</h2>
+        <!--右上角的返回按钮-->
+        <a href="javascript:history.back();">
+            <button class="button indigo radius-3" style="position: absolute;right: 20px;top: 16px;"><span class="icon-arrow_back"></span> 返回</button>
+        </a>
+
+        <!--正文内容-->
+        <div class="main">
+            <!--表格上方的搜索操作-->
+            <div class="admin-search">
+<!--                <div class="input-group">-->
+<!--                    <input id="keyword" type="text" class="text" placeholder="提示信息" />-->
+<!--                    <button id="searchBtn" class="button blue" onclick="search();">搜索</button>-->
+<!--                </div>-->
+            </div>
+            <table id="table" class="table color2">
+                <thead>
+                <tr align="center">
+                    <th>序号</th>
+                    <th>申请人姓名</th>
+                    <th>报销分类</th>
+                    <th>报销金额</th>
+                    <th>是否有发票</th>
+                    <th>发票日期</th>
+                    <th>增值税号</th>
+                    <th>发票抬头</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody id="tbody">
+                </tbody>
+            </table>
+
+            <div class="page">
+                <ul id="page" class="pagination"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script type="text/javascript">
+
+    // 页面一加载, 展示数据列表, 每页10条
+    $(document).ready(function(){
+        // 默认查询所有
+        rander();
+    });
+
+    // 渲染数据表格
+    function rander() {
+        // 定义全局 分页属性
+        $.ajax({
+            //请求方式
+            type : "POST",
+            //请求的媒体类型
+            contentType: "application/json;charset=UTF-8",
+            //请求地址
+            url : "/invoice/currlist",
+            //数据，json字符串
+            //请求成功
+            success : function(result) {
+                console.log(result);
+                var text = "";
+                $.each(result,function(index,value){
+                    console.log(value);
+                    var s;
+                    if (value.hasBill==1) s="是";
+                    else s="否";
+                    text+= "<tr align='center'><td>"+value.id+"</td><td>"+value.name+"</td><td>"+value.type+"</td><td>"+value.money+"</td>" +
+                        "<td>"+s+"</td><td>"+value.billDate+"</td><td>"+value.vat+"</td><td>"+value.title+"</td><td>"+
+                        "<button class='button blue empty' onclick='updateBook("+value.id+")'>编辑</button> &nbsp;<button class='button yellow empty' onclick='delBook("+value.id+")'>删除</button></td></tr>";
+                });
+                $("#tbody").html(text);
+            },
+            //请求失败，包含具体的错误信息
+            error : function(e){
+                console.log(e.status);
+                console.log(e.responseText);
+            }
+        });
+    }
+
+    // 编辑
+    function updateBook(id) {
+        //console.log("update Book"+id);
+        window.location.href="/invoice/invoice-update?id="+id;
+    }
+
+    // 删除
+    function delBook(id) {
+        console.log("delete Book"+id);
+        javaex.confirm({
+            content : "确定要删除么",
+            callback : "delCallback("+id+")"
+        });
+    }
+
+    function delCallback(id) {
+        // ajax
+        $.get("/invoice/delete",{"id": id},
+            function(data){
+                if (data == 200) {
+                    javaex.message({
+                        content : "删除成功",
+                        type : "success"
+                    });
+                    // 删除成功, 刷新页面
+                    setTimeout(function(){ window.location.reload();},1500)
+                }
+            });
+        // 如果你想阻止弹出层关闭，直接 return false; 即可
+        //return false;
+    }
+</script>
+</body>
+</html>

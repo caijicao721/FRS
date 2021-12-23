@@ -36,4 +36,9 @@ public class InvoiceServiceImpl implements InvoiceService {
     public List<Invoice> searchByName(String name) {
         return invoiceMapper.searchByName(name);
     }
+
+    @Override
+    public Invoice searchById(Integer id) {
+        return invoiceMapper.searchById(id);
+    }
 }

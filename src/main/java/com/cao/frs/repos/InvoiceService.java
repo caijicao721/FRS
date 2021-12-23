@@ -15,4 +15,6 @@ public interface InvoiceService {
     List<Invoice> findAll();
 
     List<Invoice> searchByName(String name);
+
+    Invoice searchById(Integer id);
 }

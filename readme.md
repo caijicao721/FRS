@@ -87,7 +87,7 @@ CREATE TABLE 	`users`(
   `is_admin` int(11) DEFAULT NULL,
   `nickname` varchar(255) DEFAULT NULL,
   `password` varchar(255) DEFAULT NULL,
-  `telphone` varchar(255) DEFAULT NULL,
+  `telephone` varchar(255) DEFAULT NULL,
   `username` varchar(255) DEFAULT NULL,
 	`limit` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -125,8 +125,8 @@ INSERT INTO `invoice` VALUES ('5','小红','酒店','200','1','2020-07-15 19:02:
 CREATE TABLE `remiburse`(
 	`id` int(11) AUTO_INCREMENT NOT NULL PRIMARY KEY,
 	`user_id` int(11) NOT NULL,
-	`create_time` datetime NOT NULL,
-	`end_time` datetime NOT NULL,
+	`create_time` datetime(6) NOT NULL,
+	`end_time` datetime(6) NOT NULL,
 	`operate_id` int(11) NOT NULL,
 	`money` int(11) NOT NULL
 )ENGINE=InnoDB DEFAULT CHARSET=utf8;

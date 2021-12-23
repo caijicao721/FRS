@@ -78,7 +78,7 @@
 					<div class="left"><p class="subtitle">管理员？</p></div>
 					<div class="right">
 						<select id="select">
-							<option value="">请选择</option>
+							<option value="-1">请选择</option>
 							<option value="1">是</option>
 							<option value="0">否</option>
 						</select>
@@ -140,7 +140,8 @@
 		var city = $("#city").val();
 		var limit = $("#limit").val();
 		var isAdmin = $('#select option:selected').val();// 是否为管理员
-
+		console.log(isAdmin);
+		console.log(typeof(isAdmin));
 		if (nickname == ""||nickname.length>12) {
 			javaex.message({
 				content : "昵称不能为空且长度不能大于12",
@@ -160,6 +161,13 @@
 		if (password == ""||password.length>18) {
 			javaex.message({
 				content : "密码不能为空且长度不能大于18",
+				type : "error"
+			});
+			return false;
+		}
+		if (isAdmin == "-1") {
+			javaex.message({
+				content : "请设置管理员权限",
 				type : "error"
 			});
 			return false;

@@ -68,4 +68,14 @@ public class UserSecurityDetailService implements UserDetailsService, UserServic
     public Users findByName(String username) {
         return userMapper.findByName(username);
     }
+
+    @Override
+    public Users findById(Integer id) {
+        return userMapper.findById(id);
+    }
+
+    @Override
+    public Users findByNickName(String nickname) {
+        return userMapper.findByNickName(nickname);
+    }
 }

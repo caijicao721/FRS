@@ -18,4 +18,7 @@ public interface UserMapper {
 
     Users findByName(String name);
 
+    Users findById(Integer id);
+
+    Users findByNickName(String nickname);
 }

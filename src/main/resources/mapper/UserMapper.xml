@@ -40,8 +40,7 @@
                                           #{password},
                                           #{telephone},
                                           #{username},
-                                          #{limit}
-                                          )
+                                          #{limit})
         </insert>
 <!--    更新一个用户-->
     <update id="update" parameterType="map">
@@ -79,5 +78,12 @@
     </update>
     <select id="findByName" resultMap="UserResultMap">
         select * from frs.users where username=#{name}
+    </select>
+
+    <select id="findById" resultMap="UserResultMap">
+        select * from frs.users where id=#{id}
+    </select>
+    <select id="findByNickName" resultMap="UserResultMap">
+        select * from frs.users where nickname=#{nickname}
     </select>
 </mapper>

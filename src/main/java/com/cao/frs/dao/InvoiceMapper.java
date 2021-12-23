@@ -21,4 +21,6 @@ public interface InvoiceMapper {
     List<Invoice> findAll();
 
     List<Invoice> searchByName(String name);
+
+    Invoice searchById(Integer id);
 }
