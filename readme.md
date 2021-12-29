@@ -1453,7 +1453,7 @@ public class MySecurityConfig extends WebSecurityConfigurerAdapter {
 				var auth = user.isAdmin;
 				if (auth == 0) {
 					console.log(auth);
-					// 若为普通用户权限, 则无法访问修改类菜单 无法添加图书,添加读者,管理用户以及添加管理员
+					// 若为普通用户权限, 则无法访问修改类菜单,管理用户
 					$("#user-info").hide();
 					$("#user-add").hide();
 					$("#user-delete").hide();
@@ -1536,4 +1536,1953 @@ public class MySecurityConfig extends WebSecurityConfigurerAdapter {
 ```
 
 # 控制层编写
+
+报销申请控制层
+
+```java 
+package com.cao.frs.controller;
+
+import cn.hutool.core.bean.BeanUtil;
+import com.cao.frs.entities.Invoice;
+import com.cao.frs.entities.Reimburse;
+import com.cao.frs.entities.Users;
+import com.cao.frs.service.InvoiceServiceImpl;
+import com.cao.frs.service.ReimburseSeviceImpl;
+import com.cao.frs.service.UserSecurityDetailService;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiModelProperty;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+@Api(tags = "报销申请")
+@RestController
+@RequestMapping("/invoice")
+public class InvoiceController {
+    @Autowired
+    InvoiceServiceImpl invoiceService;
+
+    @Autowired
+    UserSecurityDetailService userSecurityDetailService;
+
+    @Autowired
+    ReimburseSeviceImpl reimburseSevice;
+
+
+    @ApiOperation("添加一条申请")
+    @PostMapping("/add")
+    public int addInvoice(@RequestBody Invoice invoice){
+        int add = invoiceService.add(invoice);
+        return add==1?200:404;
+    }
+
+    @ApiOperation("当前用户申请记录")
+    @PostMapping("/currlist")
+    public List<Invoice> getCurrList(){
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Map<String,Object> map = BeanUtil.beanToMap(principal);
+        String username =(String) map.get("username");
+        Users users = userSecurityDetailService.findByName(username);
+        return invoiceService.searchByName(users.getNickname());
+    }
+
+
+    @ApiOperation("删除申请")
+    @GetMapping("/delete")
+    public int removeInvoice(Integer id) {
+        int code = invoiceService.remove(id);
+        return code==1?200:404;
+    }
+
+
+    @ApiOperation("更改报销申请")
+    @PostMapping("/update")
+    public int updateInvoice(@RequestBody Invoice invoice){
+        int update = invoiceService.update(BeanUtil.beanToMap(invoice));
+        return update==1?200:404;
+    }
+
+
+    @ApiOperation("当前编辑记录id")
+    @GetMapping("/detail")
+    public Invoice getCurrInvoice(Integer id){
+        return invoiceService.searchById(id);
+    }
+
+    @ApiOperation("所有申请列表")
+    @PostMapping("list")
+    public List<Invoice> getlist(){
+        return invoiceService.findAll();
+    }
+
+
+    @ApiOperation("管理员审批同意")
+    @GetMapping("/approve")
+    public int approve(Integer id){
+        Invoice invoice = invoiceService.searchById(id);
+        System.out.println(invoice.getName());
+        Users users = userSecurityDetailService.findByNickName(invoice.getName());
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Map<String,Object> map = BeanUtil.beanToMap(principal);
+        String username =(String) map.get("username");
+        Users operate = userSecurityDetailService.findByName(username);
+        Reimburse reimburse = new Reimburse();
+        reimburse.setUserId(users.getId());
+        reimburse.setOperateId(operate.getId());
+        reimburse.setCreateTime(invoice.getBillDate());
+        reimburse.setEndTime(new Date());
+        reimburse.setMoney(invoice.getMoney());
+        int add = reimburseSevice.add(reimburse);
+        return add==1?200:404;
+    }
+}
+```
+
+用户控制
+
+```java 
+package com.cao.frs.controller;
+
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
+import com.cao.frs.entities.Reimburse;
+import com.cao.frs.entities.Users;
+import com.cao.frs.service.ReimburseSeviceImpl;
+import com.cao.frs.service.UserSecurityDetailService;
+import com.cao.frs.utils.out.ReimOut;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@Api(tags = "报销记录")
+@RestController
+@RequestMapping("/reimburse")
+public class ReimburseController {
+    @Autowired
+    ReimburseSeviceImpl reimburseseviceimpl;
+
+    @Autowired
+    UserSecurityDetailService userSecurityDetailService;
+
+    @ApiOperation("所有报销记录")
+    @PostMapping("/list")
+    public List<ReimOut> getlist(){
+        List<ReimOut> reimOuts = new ArrayList<>();
+        List<Reimburse> list = reimburseseviceimpl.findAll();
+
+        for (Reimburse reimburse : list) {
+            reimOuts.add(new ReimOut(reimburse.getId(),
+                    userSecurityDetailService.findById(reimburse.getUserId()).getUsername()
+                    ,reimburse.getCreateTime()
+                    ,reimburse.getEndTime()
+                    ,userSecurityDetailService.findById(reimburse.getOperateId()).getUsername()
+                    ,reimburse.getMoney()));
+        }
+        //System.out.println(reimOuts);
+        return reimOuts;
+    }
+
+    @ApiOperation("已完成报销记录")
+    @PostMapping("/currlist")
+    public List<ReimOut> getCurr(){
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Map<String,Object> map = BeanUtil.beanToMap(principal);
+        String username =(String) map.get("username");
+        String user = userSecurityDetailService.findByName(username).getUsername();
+        List<Reimburse> list = reimburseseviceimpl.findAll();
+        List<ReimOut> reimOuts = new ArrayList<>();
+        for (Reimburse reimburse : list) {
+            if (userSecurityDetailService.findById(reimburse.getUserId()).getUsername().equals(user)){
+                    reimOuts.add(new ReimOut(reimburse.getId(),
+                    userSecurityDetailService.findById(reimburse.getUserId()).getUsername()
+                    ,reimburse.getCreateTime()
+                    ,reimburse.getEndTime()
+                    ,userSecurityDetailService.findById(reimburse.getOperateId()).getUsername()
+                    ,reimburse.getMoney()));}
+        }
+        return reimOuts;
+    }
+}
+
+```
+
+路由控制器
+
+```java
+package com.cao.frs.controller;
+
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Api(tags = "路由")
+@Controller
+public class RouteController {
+
+    /**
+     * 跳转登录
+     */
+    @ApiOperation("跳转登录页")
+    @GetMapping({"/login","/","logout"})
+    public String toLogin() {
+        return "login";
+    }
+
+    /**
+     * 跳转首页
+     */
+    @ApiOperation("跳转首页")
+    @RequestMapping({"/index"})
+    public String toIndex() {
+        return "index";
+    }
+    /**
+     * 跳转欢迎页面
+     */
+    @ApiOperation("跳转欢迎页面")
+    @RequestMapping({"/welcome"})
+    public String toWelcome() {
+        return "welcome";
+    }
+
+    /**
+     * 二级路由跳转
+     * @param name 映射名称
+     */
+    @ApiOperation("二级路由跳转")
+    @RequestMapping("/{filename}/{name}")
+    public String change(@PathVariable String filename, @PathVariable String name) {
+        return filename+"/"+name;
+    }
+}
+
+```
+
+报销记录控制器
+
+```java
+package com.cao.frs.controller;
+
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
+import com.cao.frs.entities.Reimburse;
+import com.cao.frs.entities.Users;
+import com.cao.frs.service.ReimburseSeviceImpl;
+import com.cao.frs.service.UserSecurityDetailService;
+import com.cao.frs.utils.out.ReimOut;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@Api(tags = "报销记录")
+@RestController
+@RequestMapping("/reimburse")
+public class ReimburseController {
+    @Autowired
+    ReimburseSeviceImpl reimburseseviceimpl;
+
+    @Autowired
+    UserSecurityDetailService userSecurityDetailService;
+
+    @ApiOperation("所有报销记录")
+    @PostMapping("/list")
+    public List<ReimOut> getlist(){
+        List<ReimOut> reimOuts = new ArrayList<>();
+        List<Reimburse> list = reimburseseviceimpl.findAll();
+
+        for (Reimburse reimburse : list) {
+            reimOuts.add(new ReimOut(reimburse.getId(),
+                    userSecurityDetailService.findById(reimburse.getUserId()).getUsername()
+                    ,reimburse.getCreateTime()
+                    ,reimburse.getEndTime()
+                    ,userSecurityDetailService.findById(reimburse.getOperateId()).getUsername()
+                    ,reimburse.getMoney()));
+        }
+        //System.out.println(reimOuts);
+        return reimOuts;
+    }
+
+    @ApiOperation("已完成报销记录")
+    @PostMapping("/currlist")
+    public List<ReimOut> getCurr(){
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Map<String,Object> map = BeanUtil.beanToMap(principal);
+        String username =(String) map.get("username");
+        String user = userSecurityDetailService.findByName(username).getUsername();
+        List<Reimburse> list = reimburseseviceimpl.findAll();
+        List<ReimOut> reimOuts = new ArrayList<>();
+        for (Reimburse reimburse : list) {
+            if (userSecurityDetailService.findById(reimburse.getUserId()).getUsername().equals(user)){
+                    reimOuts.add(new ReimOut(reimburse.getId(),
+                    userSecurityDetailService.findById(reimburse.getUserId()).getUsername()
+                    ,reimburse.getCreateTime()
+                    ,reimburse.getEndTime()
+                    ,userSecurityDetailService.findById(reimburse.getOperateId()).getUsername()
+                    ,reimburse.getMoney()));}
+        }
+        return reimOuts;
+    }
+}
+
+```
+
+# Dock文档
+
+```file
+FROM java:8
+
+COPY *.jar /app.jar
+
+CMD ["--server.port=8080"]
+
+EXPOSE 8080
+
+ENTRYPOINT ["java","-jar","/app.jar"]
+```
+
+# 前端页面
+
+## 报销申请
+
+添加报销记录
+
+```html 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta charset="utf-8">
+    <!--字体图标-->
+    <link href="../../javaex/pc/css/icomoon.css" rel="stylesheet" />
+    <!--动画-->
+    <link href="../../javaex/pc/css/animate.css" rel="stylesheet" />
+    <!--骨架样式-->
+    <link href="../../javaex/pc/css/common.css" rel="stylesheet" />
+    <!--皮肤（缇娜）-->
+    <link href="../../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+    <!--jquery，不可修改版本-->
+    <script src="../../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+    <!--全局动态修改-->
+    <script src="../../javaex/pc/js/common.js"></script>
+    <!--核心组件-->
+    <script src="../../javaex/pc/js/javaex.min.js"></script>
+    <!--表单验证-->
+    <script src="../../javaex/pc/js/javaex-formVerify.js"></script>
+    <title>后台管理</title>
+</head>
+<style>
+
+</style>
+
+<body>
+<!--全部主体内容-->
+<div class="list-content">
+    <!--块元素-->
+    <div class="block">
+        <!--修饰块元素名称-->
+        <div class="banner">
+            <p class="tab fixed">报销申请</p>
+        </div>
+
+        <!--正文内容-->
+        <div class="main">
+            <form>
+                <!--文本框-->
+                <div class="unit clear">
+                    <div class="left"><span class="required">*</span><p class="subtitle">姓名</p></div>
+                    <div class="right">
+                        <input type="text" id="name" class="text" placeholder="请输入姓名" />
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><span class="required">*</span><p class="subtitle">VAT</p></div>
+                    <div class="right">
+                        <input type="text" id="vat" class="text" placeholder="请输入增值税号" />
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><span class="required">*</span><p class="subtitle">报销金额</p></div>
+                    <div class="right">
+                        <input type="text" id="money" class="text" placeholder="请输入报销金额" />
+                    </div>
+                </div>
+
+                <!--下拉选择框-->
+                <div class="unit clear">
+                    <div class="left"><p class="subtitle">是否有发票</p></div>
+                    <div class="right">
+                        <select id="select">
+                            <option value="">请选择</option>
+                            <option value="1">是</option>
+                            <option value="0">否</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><span class="required"></span><p class="subtitle">分类</p></div>
+                    <div class="right">
+                        <input type="text" id="type" class="text" placeholder="报销分类" />
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><span class="required"></span><p class="subtitle">抬头</p></div>
+                    <div class="right">
+                        <input type="text" id="title" class="text" placeholder="发票抬头" />
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><p class="subtitle">发票日期</p></div>
+                    <div class="right">
+                        <input type="text" id="billDate" class="ex-date" style="width: 180px;" value="" readonly/>
+                    </div>
+                </div>
+
+                <!--提交按钮-->
+                <div class="unit clear" style="width: 800px;">
+                    <div style="text-align: center;">
+                        <!--表单提交时，必须是input元素，并指定type类型为button，否则ajax提交时，会返回error回调函数-->
+                        <input type="button" id="return" class="button no" value="返回" />
+                        <input type="button" id="save" class="button yes" value="保存" />
+                    </div>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+
+    javaex.date({
+        id : "billDate",	// 承载日期组件的id
+        isTime : true,
+        date : "2018-04-15 01:01:01",	// 选择的日期
+        // 重新选择日期之后返回一个时间对象
+        callback : function(rtn) {
+        }
+    });
+
+    // 监听点击保存按钮事件
+    $("#save").click(function() {
+        // 获取输入内容
+        var name = $("#name").val();
+        var vat = $("#vat").val();
+        var type = $("#type").val();
+        var hasBill = $('#select option:selected').val();// 类目
+        var money = $("#money").val();
+        var billDate = $("#billDate").val();
+        var title = $("#title").val();
+
+        // 校验文本
+        if (name == "") {
+            javaex.optTip({
+                content : "姓名不能为空!",
+                type : "error"
+            });
+
+            return false;
+        }
+
+        if (vat == "") {
+            javaex.optTip({
+                content : "vat不能为空!",
+                type : "error"
+            });
+
+            return false;
+        }
+
+        if (money == "") {
+            javaex.optTip({
+                content : "报销金额不能为空!",
+                type : "error"
+            });
+
+            return false;
+        }
+
+        if (hasBill == "") {
+            javaex.optTip({
+                content : "请选择是否有发票!",
+                type : "error"
+            });
+
+            return false;
+        }
+
+        // 表单数据
+        var json = {"name":name,"type":type,"money":money,"hasBill":hasBill,"billDate":billDate,"vat":vat,"title":title};
+
+        // 提交
+        // ajax 示例
+        $.ajax({
+            //请求方式
+            type : "POST",
+            //请求的媒体类型
+            contentType: "application/json;charset=UTF-8",
+            //请求地址
+            url : "/invoice/add",
+            //数据，json字符串
+            data : JSON.stringify(json),
+            //请求成功
+            success : function(result) {
+                console.log(result);
+                // 获取集合属性
+                if (result == 200) {
+                    javaex.message({
+                        content : "添加成功",
+                        type : "success"
+                    });
+                    // 跳转至列表
+                    setTimeout(function(){ window.location.href="/invoice/invoice-currlist";},1500)
+                }
+
+            },
+            //请求失败，包含具体的错误信息
+            error : function(e){
+                console.log(e.status);
+                console.log(e.responseText);
+            }
+        });
+
+    });
+
+    // 监听点击返回按钮事件
+    $("#return").click(function() {
+        window.location.href = "/invoice-currlist.html";
+    });
+</script>
+</body>
+</html>
+```
+
+当前申请的记录列表
+
+```html
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta charset="utf-8">
+    <!--字体图标-->
+    <link href="../../javaex/pc/css/icomoon.css" rel="stylesheet" />
+    <!--动画-->
+    <link href="../../javaex/pc/css/animate.css" rel="stylesheet" />
+    <!--骨架样式-->
+    <link href="../../javaex/pc/css/common.css" rel="stylesheet" />
+    <!--皮肤（缇娜）-->
+    <link href="../../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+    <!--jquery，不可修改版本-->
+    <script src="../../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+    <!--全局动态修改-->
+    <script src="../../javaex/pc/js/common.js"></script>
+    <!--核心组件-->
+    <script src="../../javaex/pc/js/javaex.min.js"></script>
+    <!--表单验证-->
+    <script src="../../javaex/pc/js/javaex-formVerify.js"></script>
+    <title>后台管理</title>
+</head>
+
+<body>
+<!--主体内容-->
+<div class="list-content">
+    <!--块元素-->
+    <div class="block">
+        <!--页面有多个表格时，可以用于标识表格-->
+        <h2>申请报销列表</h2>
+        <!--右上角的返回按钮-->
+        <a href="javascript:history.back();">
+            <button class="button indigo radius-3" style="position: absolute;right: 20px;top: 16px;"><span class="icon-arrow_back"></span> 返回</button>
+        </a>
+
+        <!--正文内容-->
+        <div class="main">
+            <!--表格上方的搜索操作-->
+            <div class="admin-search">
+<!--                <div class="input-group">-->
+<!--                    <input id="keyword" type="text" class="text" placeholder="提示信息" />-->
+<!--                    <button id="searchBtn" class="button blue" onclick="search();">搜索</button>-->
+<!--                </div>-->
+            </div>
+            <table id="table" class="table color2">
+                <thead>
+                <tr align="center">
+                    <th>序号</th>
+                    <th>申请人姓名</th>
+                    <th>报销分类</th>
+                    <th>报销金额</th>
+                    <th>是否有发票</th>
+                    <th>发票日期</th>
+                    <th>增值税号</th>
+                    <th>发票抬头</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody id="tbody">
+                </tbody>
+            </table>
+
+            <div class="page">
+                <ul id="page" class="pagination"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script type="text/javascript">
+
+    // 页面一加载, 展示数据列表, 每页10条
+    $(document).ready(function(){
+        // 默认查询所有
+        rander();
+    });
+
+    // 渲染数据表格
+    function rander() {
+        // 定义全局 分页属性
+        $.ajax({
+            //请求方式
+            type : "POST",
+            //请求的媒体类型
+            contentType: "application/json;charset=UTF-8",
+            //请求地址
+            url : "/invoice/currlist",
+            //数据，json字符串
+            //请求成功
+            success : function(result) {
+                console.log(result);
+                var text = "";
+                $.each(result,function(index,value){
+                    console.log(value);
+                    var s;
+                    if (value.hasBill==1) s="是";
+                    else s="否";
+                    text+= "<tr align='center'><td>"+value.id+"</td><td>"+value.name+"</td><td>"+value.type+"</td><td>"+value.money+"</td>" +
+                        "<td>"+s+"</td><td>"+value.billDate+"</td><td>"+value.vat+"</td><td>"+value.title+"</td><td>"+
+                        "<button class='button blue empty' onclick='updateBook("+value.id+")'>编辑</button> &nbsp;<button class='button yellow empty' onclick='delBook("+value.id+")'>删除</button></td></tr>";
+                });
+                $("#tbody").html(text);
+            },
+            //请求失败，包含具体的错误信息
+            error : function(e){
+                console.log(e.status);
+                console.log(e.responseText);
+            }
+        });
+    }
+
+    // 编辑
+    function updateBook(id) {
+        //console.log("update Book"+id);
+        window.location.href="/invoice/invoice-update?id="+id;
+    }
+
+    // 删除
+    function delBook(id) {
+        console.log("delete Book"+id);
+        javaex.confirm({
+            content : "确定要删除么",
+            callback : "delCallback("+id+")"
+        });
+    }
+
+    function delCallback(id) {
+        // ajax
+        $.get("/invoice/delete",{"id": id},
+            function(data){
+                if (data == 200) {
+                    javaex.message({
+                        content : "删除成功",
+                        type : "success"
+                    });
+                    // 删除成功, 刷新页面
+                    setTimeout(function(){ window.location.reload();},1500)
+                }
+            });
+        // 如果你想阻止弹出层关闭，直接 return false; 即可
+        //return false;
+    }
+</script>
+</body>
+</html>
+```
+
+待审批申请
+
+```html
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <meta charset="utf-8">
+  <!--字体图标-->
+  <link href="../../javaex/pc/css/icomoon.css" rel="stylesheet" />
+  <!--动画-->
+  <link href="../../javaex/pc/css/animate.css" rel="stylesheet" />
+  <!--骨架样式-->
+  <link href="../../javaex/pc/css/common.css" rel="stylesheet" />
+  <!--皮肤（缇娜）-->
+  <link href="../../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+  <!--jquery，不可修改版本-->
+  <script src="../../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+  <!--全局动态修改-->
+  <script src="../../javaex/pc/js/common.js"></script>
+  <!--核心组件-->
+  <script src="../../javaex/pc/js/javaex.min.js"></script>
+  <!--表单验证-->
+  <script src="../../javaex/pc/js/javaex-formVerify.js"></script>
+  <title>后台管理</title>
+</head>
+
+<body>
+<!--主体内容-->
+<div class="list-content">
+  <!--块元素-->
+  <div class="block">
+    <!--页面有多个表格时，可以用于标识表格-->
+    <h2>申请报销列表</h2>
+    <!--右上角的返回按钮-->
+    <a href="javascript:history.back();">
+      <button class="button indigo radius-3" style="position: absolute;right: 20px;top: 16px;"><span class="icon-arrow_back"></span> 返回</button>
+    </a>
+
+    <!--正文内容-->
+    <div class="main">
+      <!--表格上方的搜索操作-->
+      <div class="admin-search">
+        <!--                <div class="input-group">-->
+        <!--                    <input id="keyword" type="text" class="text" placeholder="提示信息" />-->
+        <!--                    <button id="searchBtn" class="button blue" onclick="search();">搜索</button>-->
+        <!--                </div>-->
+      </div>
+      <table id="table" class="table color2">
+        <thead>
+        <tr align="center">
+          <th>序号</th>
+          <th>申请人姓名</th>
+          <th>报销分类</th>
+          <th>报销金额</th>
+          <th>是否有发票</th>
+          <th>发票日期</th>
+          <th>增值税号</th>
+          <th>发票抬头</th>
+          <th>操作</th>
+        </tr>
+        </thead>
+        <tbody id="tbody">
+        </tbody>
+      </table>
+
+      <div class="page">
+        <ul id="page" class="pagination"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script type="text/javascript">
+
+  // 页面一加载, 展示数据列表, 每页10条
+  $(document).ready(function(){
+    // 默认查询所有
+    rander();
+  });
+
+  // 渲染数据表格
+  function rander() {
+    // 定义全局 分页属性
+    $.ajax({
+      //请求方式
+      type : "POST",
+      //请求的媒体类型
+      contentType: "application/json;charset=UTF-8",
+      //请求地址
+      url : "/invoice/list",
+      //数据，json字符串
+      //请求成功
+      success : function(result) {
+        console.log(result);
+        var text = "";
+        $.each(result,function(index,value){
+          console.log(value);
+          var s;
+          if (value.hasBill==1) s="是";
+          else s="否";
+          text+= "<tr align='center'><td>"+value.id+"</td><td>"+value.name+"</td><td>"+value.type+"</td><td>"+value.money+"</td>" +
+                  "<td>"+s+"</td><td>"+value.billDate+"</td><td>"+value.vat+"</td><td>"+value.title+"</td><td>"+
+                  "<button class='button blue empty' onclick='refuse("+value.id+")'>退回</button> &nbsp;<button class='button yellow empty' onclick='approve("+value.id+")'>同意</button></td></tr>";
+        });
+        $("#tbody").html(text);
+      },
+      //请求失败，包含具体的错误信息
+      error : function(e){
+        console.log(e.status);
+        console.log(e.responseText);
+      }
+    });
+  }
+
+  // 编辑
+  function approve(id) {
+    console.log("approve"+id);
+    javaex.confirm({
+      content : "确定要同意么",
+      callback : "approveInvoice("+id+")"
+    });
+  }
+  function approveInvoice(id) {
+    // ajax
+    $.get("/invoice/approve",{"id": id},
+            function(data){
+              if (data == 200) {
+                javaex.message({
+                  content : "已同意",
+                  type : "success"
+                });
+                // 删除成功, 刷新页面
+                setTimeout(function(){ window.location.reload();},1500)
+              }
+            });
+    // 如果你想阻止弹出层关闭，直接 return false; 即可
+    //return false;
+  }
+  // 退回
+  function refuse(id) {
+    console.log("refuse"+id);
+    javaex.confirm({
+      content : "确定要退回么",
+      callback : "delCallback("+id+")"
+    });
+  }
+
+  function delCallback(id) {
+    // ajax
+    $.get("/invoice/delete",{"id": id},
+            function(data){
+              if (data == 200) {
+                javaex.message({
+                  content : "删除成功",
+                  type : "success"
+                });
+                // 删除成功, 刷新页面
+                setTimeout(function(){ window.location.reload();},1500)
+              }
+            });
+    // 如果你想阻止弹出层关闭，直接 return false; 即可
+    //return false;
+  }
+</script>
+</body>
+</html>
+```
+
+更改申请
+
+```html 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <meta charset="utf-8">
+  <!--字体图标-->
+  <link href="../../javaex/pc/css/icomoon.css" rel="stylesheet" />
+  <!--动画-->
+  <link href="../../javaex/pc/css/animate.css" rel="stylesheet" />
+  <!--骨架样式-->
+  <link href="../../javaex/pc/css/common.css" rel="stylesheet" />
+  <!--皮肤（缇娜）-->
+  <link href="../../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+  <!--jquery，不可修改版本-->
+  <script src="../../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+  <!--全局动态修改-->
+  <script src="../../javaex/pc/js/common.js"></script>
+  <!--核心组件-->
+  <script src="../../javaex/pc/js/javaex.min.js"></script>
+  <!--表单验证-->
+  <script src="../../javaex/pc/js/javaex-formVerify.js"></script>
+  <title>后台管理</title>
+</head>
+<style>
+
+</style>
+
+<body>
+<!--全部主体内容-->
+<div class="list-content">
+  <!--块元素-->
+  <div class="block">
+    <!--修饰块元素名称-->
+    <div class="banner">
+      <p class="tab fixed">编辑报销申请</p>
+    </div>
+
+    <!--正文内容-->
+    <div class="main">
+      <form>
+        <!--文本框-->
+        <div class="unit clear">
+          <div class="left"><span class="required">*</span><p class="subtitle">姓名</p></div>
+          <div class="right">
+            <input type="text" id="name" class="text" placeholder="请输入姓名" />
+          </div>
+        </div>
+
+        <div class="unit clear">
+          <div class="left"><span class="required">*</span><p class="subtitle">VAT</p></div>
+          <div class="right">
+            <input type="text" id="vat" class="text" placeholder="请输入增值税号" />
+          </div>
+        </div>
+
+        <div class="unit clear">
+          <div class="left"><span class="required">*</span><p class="subtitle">报销金额</p></div>
+          <div class="right">
+            <input type="text" id="money" class="text" placeholder="请输入报销金额" />
+          </div>
+        </div>
+
+        <!--下拉选择框-->
+        <div class="unit clear">
+          <div class="left"><p class="subtitle">是否有发票</p></div>
+          <div class="right">
+            <select id="select">
+              <option value="">请选择</option>
+              <option value="1">是</option>
+              <option value="0">否</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="unit clear">
+          <div class="left"><span class="required"></span><p class="subtitle">分类</p></div>
+          <div class="right">
+            <input type="text" id="type" class="text" placeholder="报销分类" />
+          </div>
+        </div>
+
+        <div class="unit clear">
+          <div class="left"><span class="required"></span><p class="subtitle">抬头</p></div>
+          <div class="right">
+            <input type="text" id="title" class="text" placeholder="发票抬头" />
+          </div>
+        </div>
+
+        <div class="unit clear">
+          <div class="left"><p class="subtitle">发票日期</p></div>
+          <div class="right">
+            <input type="text" id="billDate" class="ex-date" style="width: 350px;" value="" readonly/>
+          </div>
+        </div>
+
+        <!--提交按钮-->
+        <div class="unit clear" style="width: 800px;">
+          <div style="text-align: center;">
+            <!--表单提交时，必须是input元素，并指定type类型为button，否则ajax提交时，会返回error回调函数-->
+            <input type="button" id="return" class="button no" value="返回" />
+            <input type="button" id="save" class="button yes" value="保存" />
+          </div>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+
+  // 页面一加载赋值表单
+  $(document).ready(function(){
+    // 地址栏参数
+    var id = getQueryVariable("id");
+    // get读取参数
+    $.get("/invoice/detail",{"id": id}, function(data){
+      console.log(data);
+      // 页面一加载, 读取登录用户信息
+      $("#name").val(data.name);
+      $("#type").val(data.type);
+      $("#money").val(data.money);
+      $("#billDate").val(data.billDate);
+      $("#vat").val(data.vat);
+      $("#title").val(data.title);
+      if (data.hasBill==1) $('#select').val(1);// 类目
+      else $('#select').val(0);
+    });
+
+  });
+
+  javaex.date({
+    id : "billDate",	// 承载日期组件的id
+    isTime : true,
+    date : "2020-04-15 01:01:01",	// 选择的日期
+    // 重新选择日期之后返回一个时间对象
+    callback : function(rtn) {
+    }
+  });
+
+  // 获取地址栏参数
+  function getQueryVariable(variable){
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i=0;i<vars.length;i++) {
+      var pair = vars[i].split("=");
+      if(pair[0] == variable){return pair[1];}
+    }
+    return false;
+  }
+
+  // 监听点击保存按钮事件
+  $("#save").click(function() {
+    // 获取输入内容
+    var name = $("#name").val();
+    var vat = $("#vat").val();
+    var type = $("#type").val();
+    var hasBill = $('#select option:selected').val();// 类目
+    var money = $("#money").val();
+    var billDate = $("#billDate").val();
+    var title = $("#title").val();
+    console.log($("#billDate").val());
+    // 校验文本
+    if (name == "") {
+      javaex.optTip({
+        content : "姓名不能为空!",
+        type : "error"
+      });
+
+      return false;
+    }
+
+    if (vat == "") {
+      javaex.optTip({
+        content : "vat不能为空!",
+        type : "error"
+      });
+
+      return false;
+    }
+
+    if (money == "") {
+      javaex.optTip({
+        content : "报销金额不能为空!",
+        type : "error"
+      });
+
+      return false;
+    }
+
+    if (hasBill == "") {
+      javaex.optTip({
+        content : "请选择是否有发票!",
+        type : "error"
+      });
+
+      return false;
+    }
+
+    var id = getQueryVariable("id");
+    // 表单数据
+    var json = {"id":id,"name":name,"type":type,"money":money,"hasBill":hasBill,"billDate":billDate,"vat":vat,"title":title};
+
+    // 提交
+    // ajax 示例
+    $.ajax({
+      //请求方式
+      type : "POST",
+      //请求的媒体类型
+      contentType: "application/json;charset=UTF-8",
+      //请求地址
+      url : "/invoice/update",
+      //数据，json字符串
+      data : JSON.stringify(json),
+      //请求成功
+      success : function(result) {
+        console.log(result);
+        // 获取集合属性
+        if (result != 200) {
+            javaex.message({
+              content : "修改失败",
+              type : "error"
+            });
+          }else {
+            javaex.message({
+              content : "修改成功",
+              type : "success"
+            });
+            // 修改成功, 跳转页面
+            setTimeout(function(){window.location.href="/invoice/invoice-currlist";},1500)
+          }
+
+          // 跳转至列表
+//                    window.location.href="/book/book-list";
+      },
+      //请求失败，包含具体的错误信息
+      error : function(e){
+        console.log(e.status);
+        console.log(e.responseText);
+      }
+    });
+
+  });
+
+  // 监听点击返回按钮事件
+  $("#return").click(function() {
+    window.location.href = "/invoice/invoice-currlist";
+  });
+</script>
+</body>
+</html>
+```
+
+## 完成的报销记录
+
+当前审批完成的报销记录
+
+```html 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta charset="utf-8">
+    <!--字体图标-->
+    <link href="../../javaex/pc/css/icomoon.css" rel="stylesheet" />
+    <!--动画-->
+    <link href="../../javaex/pc/css/animate.css" rel="stylesheet" />
+    <!--骨架样式-->
+    <link href="../../javaex/pc/css/common.css" rel="stylesheet" />
+    <!--皮肤（缇娜）-->
+    <link href="../../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+    <!--jquery，不可修改版本-->
+    <script src="../../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+    <!--全局动态修改-->
+    <script src="../../javaex/pc/js/common.js"></script>
+    <!--核心组件-->
+    <script src="../../javaex/pc/js/javaex.min.js"></script>
+    <!--表单验证-->
+    <script src="../../javaex/pc/js/javaex-formVerify.js"></script>
+    <title>后台管理</title>
+</head>
+
+<body>
+<!--主体内容-->
+<div class="list-content">
+    <!--块元素-->
+    <div class="block">
+        <!--页面有多个表格时，可以用于标识表格-->
+        <h2>报销记录列表</h2>
+        <!--右上角的返回按钮-->
+        <a href="javascript:history.back();">
+            <button class="button indigo radius-3" style="position: absolute;right: 20px;top: 16px;"><span class="icon-arrow_back"></span> 返回</button>
+        </a>
+
+        <!--正文内容-->
+        <div class="main">
+            <!--表格上方的搜索操作-->
+            <!--            <div class="admin-search">-->
+            <!--                <div class="input-group">-->
+            <!--                    <input id="keyword" type="text" class="text" placeholder="搜索用户名或者昵称" />-->
+            <!--                    <button id="searchBtn" class="button blue" onclick="search();">搜索</button>-->
+            <!--                </div>-->
+            <!--            </div>-->
+
+            <!--表格上方的操作元素，添加、删除等-->
+            <!--
+            <div class="operation-wrap">
+                <div class="buttons-wrap">
+                    <button class="button blue radius-3"><span class="icon-plus"></span> 添加</button>
+                    <button class="button red radius-3"><span class="icon-close2"></span> 删除</button>
+                </div>
+            </div>
+            -->
+            <table id="table" class="table color2">
+                <thead>
+                <tr align="center">
+                    <th>次序</th>
+                    <th>申请人</th>
+                    <th>申请日期</th>
+                    <th>审批日期</th>
+                    <th>审批人</th>
+                    <th>报销金额</th>
+                </tr>
+                </thead>
+                <tbody id="tbody">
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // 页面一加载, 展示数据列表, 每页10条
+    $(document).ready(function(){
+        // 默认查询所有
+        rander();
+    });
+
+    // 渲染数据表格
+    function rander() {
+        // 定义全局 分页属性
+        $.ajax({
+            //请求方式
+            type : "POST",
+            //请求的媒体类型
+            contentType: "application/json;charset=UTF-8",
+            //请求地址
+            url : "/reimburse/currlist",
+            //请求成功
+            success : function(result) {
+                console.log(result);
+                var text = "";
+                $.each(result,function(index,value){
+                    console.log(value);
+                    text+= "<tr ='center'><td>"+value.id+"</td><td>"+value.userName+"</td><td>"+value.createTime+"</td><td>"+value.endTime+"</td>" +
+                        "<td>"+value.operateName+"</td><td>"+value.money+"</td><td>";
+                });
+
+                $("#tbody").html(text);
+            },
+            //请求失败，包含具体的错误信息
+            error : function(e){
+                console.log(e.status);
+                console.log(e.responseText);
+            }
+        });
+    }
+
+
+
+</script>
+</body>
+</html>
+```
+
+所有审批结束的记录
+
+```html
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta charset="utf-8">
+    <!--字体图标-->
+    <link href="../../javaex/pc/css/icomoon.css" rel="stylesheet" />
+    <!--动画-->
+    <link href="../../javaex/pc/css/animate.css" rel="stylesheet" />
+    <!--骨架样式-->
+    <link href="../../javaex/pc/css/common.css" rel="stylesheet" />
+    <!--皮肤（缇娜）-->
+    <link href="../../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+    <!--jquery，不可修改版本-->
+    <script src="../../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+    <!--全局动态修改-->
+    <script src="../../javaex/pc/js/common.js"></script>
+    <!--核心组件-->
+    <script src="../../javaex/pc/js/javaex.min.js"></script>
+    <!--表单验证-->
+    <script src="../../javaex/pc/js/javaex-formVerify.js"></script>
+    <title>后台管理</title>
+</head>
+
+<body>
+<!--主体内容-->
+<div class="list-content">
+    <!--块元素-->
+    <div class="block">
+        <!--页面有多个表格时，可以用于标识表格-->
+        <h2>报销记录列表</h2>
+        <!--右上角的返回按钮-->
+        <a href="javascript:history.back();">
+            <button class="button indigo radius-3" style="position: absolute;right: 20px;top: 16px;"><span class="icon-arrow_back"></span> 返回</button>
+        </a>
+
+        <!--正文内容-->
+        <div class="main">
+            <!--表格上方的搜索操作-->
+<!--            <div class="admin-search">-->
+<!--                <div class="input-group">-->
+<!--                    <input id="keyword" type="text" class="text" placeholder="搜索用户名或者昵称" />-->
+<!--                    <button id="searchBtn" class="button blue" onclick="search();">搜索</button>-->
+<!--                </div>-->
+<!--            </div>-->
+
+            <!--表格上方的操作元素，添加、删除等-->
+            <!--
+            <div class="operation-wrap">
+                <div class="buttons-wrap">
+                    <button class="button blue radius-3"><span class="icon-plus"></span> 添加</button>
+                    <button class="button red radius-3"><span class="icon-close2"></span> 删除</button>
+                </div>
+            </div>
+            -->
+            <table id="table" class="table color2">
+                <thead>
+                <tr align="center">
+                    <th>次序</th>
+                    <th>申请人</th>
+                    <th>申请日期</th>
+                    <th>审批日期</th>
+                    <th>审批人</th>
+                    <th>报销金额</th>
+                </tr>
+                </thead>
+                <tbody id="tbody">
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // 页面一加载, 展示数据列表, 每页10条
+    $(document).ready(function(){
+        // 默认查询所有
+        rander();
+    });
+
+    // 渲染数据表格
+    function rander() {
+        // 定义全局 分页属性
+        $.ajax({
+            //请求方式
+            type : "POST",
+            //请求的媒体类型
+            contentType: "application/json;charset=UTF-8",
+            //请求地址
+            url : "/reimburse/list",
+            //请求成功
+            success : function(result) {
+                console.log(result);
+                var text = "";
+                $.each(result,function(index,value){
+                    console.log(value);
+                    text+= "<tr ='center'><td>"+value.id+"</td><td>"+value.userName+"</td><td>"+value.createTime+"</td><td>"+value.endTime+"</td>" +
+                        "<td>"+value.operateName+"</td><td>"+value.money+"</td><td>";
+                });
+
+                $("#tbody").html(text);
+            },
+            //请求失败，包含具体的错误信息
+            error : function(e){
+                console.log(e.status);
+                console.log(e.responseText);
+            }
+        });
+    }
+
+
+
+</script>
+</body>
+</html>
+```
+
+## 用户页面
+
+添加用户
+
+```html 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<meta charset="utf-8">
+	<!--字体图标-->
+	<link href="../../javaex/pc/css/icomoon.css" rel="stylesheet" />
+	<!--动画-->
+	<link href="../../javaex/pc/css/animate.css" rel="stylesheet" />
+	<!--骨架样式-->
+	<link href="../../javaex/pc/css/common.css" rel="stylesheet" />
+	<!--皮肤（缇娜）-->
+	<link href="../../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+	<!--jquery，不可修改版本-->
+	<script src="../../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+	<!--全局动态修改-->
+	<script src="../../javaex/pc/js/common.js"></script>
+	<!--核心组件-->
+	<script src="../../javaex/pc/js/javaex.min.js"></script>
+	<!--表单验证-->
+	<script src="../../javaex/pc/js/javaex-formVerify.js"></script>
+	<title>后台管理</title>
+</head>
+<style>
+
+</style>
+
+<body>
+<!--全部主体内容-->
+<div class="list-content">
+	<!--块元素-->
+	<div class="block">
+		<!--修饰块元素名称-->
+		<div class="banner">
+			<p class="tab fixed">添加用户</p>
+		</div>
+
+		<!--正文内容-->
+		<div class="main">
+			<form id="form">
+				<!--文本框-->
+				<div class="unit clear">
+					<div class="left"><span class="required">*</span><p class="subtitle">昵称</p></div>
+					<div class="right">
+						<input type="text" class="text" id="nickname" name="nickname"/>
+					</div>
+				</div>
+
+				<div class="unit clear">
+					<div class="left"><span class="required">*</span><p class="subtitle">用户名</p></div>
+					<div class="right">
+						<input type="text" class="text" id="username" name="username"/>
+					</div>
+				</div>
+
+				<div class="unit clear">
+					<div class="left"><span class="required">*</span><p class="subtitle">密码</p></div>
+					<div class="right">
+						<input type="password" class="text" id="password" name="password"/>
+					</div>
+				</div>
+
+				<div class="unit clear">
+					<div class="left"><span class="required"></span><p class="subtitle">生日</p></div>
+					<div class="right">
+						<input type="text" class="text" id="birthday" name="birthday"/>
+					</div>
+				</div>
+
+				<div class="unit clear">
+					<div class="left"><span class="required"></span><p class="subtitle">电话</p></div>
+					<div class="right">
+						<input type="text" class="text" id="tel" name="tel"/>
+					</div>
+				</div>
+
+				<!--下拉选择框-->
+				<div class="unit clear">
+					<div class="left"><p class="subtitle">管理员？</p></div>
+					<div class="right">
+						<select id="select">
+							<option value="-1">请选择</option>
+							<option value="1">是</option>
+							<option value="0">否</option>
+						</select>
+					</div>
+				</div>
+
+				<div class="unit clear">
+					<div class="left"><span class="required"></span><p class="subtitle">邮箱</p></div>
+					<div class="right">
+						<input type="text" class="text" id="email" name="email"/>
+					</div>
+				</div>
+
+				<div class="unit clear">
+					<div class="left"><span class="required"></span><p class="subtitle">城市</p></div>
+					<div class="right">
+						<input type="text" class="text" id="city" name="city"/>
+					</div>
+				</div>
+
+				<div class="unit clear">
+					<div class="left"><span class="required"></span><p class="subtitle">报销上限</p></div>
+					<div class="right">
+						<input type="text" class="text" id="limit" name="limit"/>
+					</div>
+				</div>
+				<br>
+				<br>
+
+
+				<!--提交按钮-->
+				<div class="unit clear" style="width: 800px;">
+					<div style="text-align: center;">
+						<!--表单提交时，必须是input元素，并指定type类型为button，否则ajax提交时，会返回error回调函数-->
+						<input type="button" id="return" class="button no" value="返回" />
+						<input type="button" id="save" class="button yes" value="保存" />
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<script>
+	javaex.select({
+		id : "select",
+		isSearch : false
+	});
+
+	// 监听点击保存按钮事件
+	$("#save").click(function() {
+		// 表单验证函数
+		var nickname = $("#nickname").val();
+		var username = $("#username").val();
+		var password = $("#password").val();
+		var birthday = $("#birthday").val();
+		var telephone = $("#tel").val();
+		var email = $("#email").val();
+		var city = $("#city").val();
+		var limit = $("#limit").val();
+		var isAdmin = $('#select option:selected').val();// 是否为管理员
+		console.log(isAdmin);
+		console.log(typeof(isAdmin));
+		if (nickname == ""||nickname.length>12) {
+			javaex.message({
+				content : "昵称不能为空且长度不能大于12",
+				type : "error"
+			});
+			return false;
+		}
+
+		if (username == ""||username.length>12) {
+			javaex.message({
+				content : "用户名不能为空且长度不能大于12",
+				type : "error"
+			});
+			return false;
+		}
+
+		if (password == ""||password.length>18) {
+			javaex.message({
+				content : "密码不能为空且长度不能大于18",
+				type : "error"
+			});
+			return false;
+		}
+		if (isAdmin == "-1") {
+			javaex.message({
+				content : "请设置管理员权限",
+				type : "error"
+			});
+			return false;
+		}
+
+		var json = {"nickname":nickname,"username":username,"password":password,"birthday":birthday,"telephone":telephone,"email":email,"city":city,"limit":limit,"isAdmin":isAdmin};
+		$.ajax({
+			//请求方式
+			type : "POST",
+			//请求的媒体类型
+			contentType: "application/json;charset=UTF-8",
+			//请求地址
+			url : "/user/add",
+			//数据，json字符串
+			data : JSON.stringify(json),
+			//请求成功
+			success : function(result) {
+				console.log(result);
+				// 获取集合属性
+				if (result == 200) {
+					javaex.message({
+						content : "添加成功",
+						type : "success"
+					});
+
+					// 跳转至列表
+					setTimeout(function(){window.location.href="/user/user-list";},1500)
+				}
+
+			},
+			//请求失败，包含具体的错误信息
+			error : function(e){
+				console.log(e.status);
+				console.log(e.responseText);
+			}
+		});
+	});
+
+	// 监听点击返回按钮事件
+	$("#return").click(function() {
+		window.location.href="/user/user-list"
+	});
+
+</script>
+</body>
+</html>
+```
+
+当前用户信息
+
+```html
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta charset="utf-8">
+    <!--字体图标-->
+    <link href="../../javaex/pc/css/icomoon.css" rel="stylesheet" />
+    <!--动画-->
+    <link href="../../javaex/pc/css/animate.css" rel="stylesheet" />
+    <!--骨架样式-->
+    <link href="../../javaex/pc/css/common.css" rel="stylesheet" />
+    <!--皮肤（缇娜）-->
+    <link href="../../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+    <!--jquery，不可修改版本-->
+    <script src="../../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+    <!--全局动态修改-->
+    <script src="../../javaex/pc/js/common.js"></script>
+    <!--核心组件-->
+    <script src="../../javaex/pc/js/javaex.min.js"></script>
+    <!--表单验证-->
+    <script src="../../javaex/pc/js/javaex-formVerify.js"></script>
+    <title>后台管理</title>
+</head>
+<style>
+
+</style>
+
+<body>
+<!--全部主体内容-->
+<div class="list-content">
+    <!--块元素-->
+    <div class="block">
+        <!--修饰块元素名称-->
+        <div class="banner">
+            <p class="tab fixed">个人信息</p>
+        </div>
+
+        <!--正文内容-->
+        <div class="main">
+            <form id="form">
+                <!--文本框-->
+                <div class="unit clear">
+                    <div class="left"><span class="required">*</span><p class="subtitle">昵称</p></div>
+                    <div class="right">
+                        <input type="text" class="text" id="nickname" name="nickname" readonly="readonly"/>
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><span class="required">*</span><p class="subtitle">用户名</p></div>
+                    <div class="right">
+                        <input type="text" class="text" id="username" name="username" readonly="readonly"/>
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><span class="required">*</span><p class="subtitle">密码</p></div>
+                    <div class="right">
+                        <input type="password" class="text" id="password" name="password" readonly="readonly"/>
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><span class="required"></span><p class="subtitle">生日</p></div>
+                    <div class="right">
+                        <input type="text" class="text" id="birthday" name="birthday" readonly="readonly"/>
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><span class="required"></span><p class="subtitle">电话</p></div>
+                    <div class="right">
+                        <input type="text" class="text" id="telephone" name="telephone" readonly="readonly"/>
+                    </div>
+                </div>
+
+                <!--下拉选择框-->
+                <div class="unit clear">
+                    <div class="left"><span class="required"></span><p class="subtitle">是否为管理员</p></div>
+                    <div class="right">
+                        <input type="text" class="text" id="ident" name="ident" readonly="readonly"/>
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><span class="required"></span><p class="subtitle">邮箱</p></div>
+                    <div class="right">
+                        <input type="text" class="text" id="email" name="email" readonly="readonly"/>
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><span class="required"></span><p class="subtitle">城市</p></div>
+                    <div class="right">
+                        <input type="text" class="text" id="city" name="city" readonly="readonly"/>
+                    </div>
+                </div>
+
+                <div class="unit clear">
+                    <div class="left"><span class="required"></span><p class="subtitle">报销上限</p></div>
+                    <div class="right">
+                        <input type="text" class="text" id="limit" name="limit" readonly="readonly"/>
+                    </div>
+                </div>
+                <br>
+                <br>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    javaex.select({
+        id : "select",
+        isSearch : false
+    });
+    // 页面加载执行
+    $(document).ready(function(){
+        // get读取参数
+        $.get("/user/currUser", function(data){
+            var user = data;
+            $("#nickname").val(user.nickname);
+            $("#username").val(user.username);
+            $("#password").val(user.password);
+            $("#birthday").val(user.birthday);
+            $("#telephone").val(user.telephone);
+            $("#email").val(user.email);
+            $("#city").val(user.city);
+            $("#limit").val(user.limit);
+            if (user.isAdmin==1){
+                $("#ident").val("是");
+            }else{
+                $("#ident").val("否");
+            }
+
+            return false;
+        });
+    });
+</script>
+</body>
+</html>
+```
+
+所有用户列表
+
+```html
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<meta charset="utf-8">
+	<!--字体图标-->
+	<link href="../../javaex/pc/css/icomoon.css" rel="stylesheet" />
+	<!--动画-->
+	<link href="../../javaex/pc/css/animate.css" rel="stylesheet" />
+	<!--骨架样式-->
+	<link href="../../javaex/pc/css/common.css" rel="stylesheet" />
+	<!--皮肤（缇娜）-->
+	<link href="../../javaex/pc/css/skin/tina.css" rel="stylesheet" />
+	<!--jquery，不可修改版本-->
+	<script src="../../javaex/pc/lib/jquery-1.7.2.min.js"></script>
+	<!--全局动态修改-->
+	<script src="../../javaex/pc/js/common.js"></script>
+	<!--核心组件-->
+	<script src="../../javaex/pc/js/javaex.min.js"></script>
+	<!--表单验证-->
+	<script src="../../javaex/pc/js/javaex-formVerify.js"></script>
+	<title>后台管理</title>
+</head>
+
+<body>
+<!--主体内容-->
+<div class="list-content">
+	<!--块元素-->
+	<div class="block">
+		<!--页面有多个表格时，可以用于标识表格-->
+		<h2>用户列表</h2>
+		<!--右上角的返回按钮-->
+		<a href="javascript:history.back();">
+			<button class="button indigo radius-3" style="position: absolute;right: 20px;top: 16px;"><span class="icon-arrow_back"></span> 返回</button>
+		</a>
+
+		<!--正文内容-->
+		<div class="main">
+			<!--表格上方的搜索操作-->
+			<div class="admin-search">
+				<div class="input-group">
+					<input id="keyword" type="text" class="text" placeholder="搜索用户名或者昵称" />
+					<button id="searchBtn" class="button blue" onclick="search();">搜索</button>
+				</div>
+			</div>
+
+			<!--表格上方的操作元素，添加、删除等-->
+			<!--
+			<div class="operation-wrap">
+				<div class="buttons-wrap">
+					<button class="button blue radius-3"><span class="icon-plus"></span> 添加</button>
+					<button class="button red radius-3"><span class="icon-close2"></span> 删除</button>
+				</div>
+			</div>
+			-->
+			<table id="table" class="table color2">
+				<thead>
+				<tr align="center">
+					<th>次序</th>
+					<th>城市</th>
+					<th>生日</th>
+					<th>邮箱</th>
+					<th>是否为管理员</th>
+					<th>昵称</th>
+					<th>电话</th>
+					<th>用户名</th>
+					<th>报销上限</th>
+					<th>操作</th>
+				</tr>
+				</thead>
+				<tbody id="tbody">
+				<!--<tr>-->
+				<!--<td class="checkbox"><input type="checkbox" class="fill listen-1-2" /> </td>-->
+				<!--<td>1</td>-->
+				<!--<td><button class="button blue">编辑</button><button class="button red">删除</button></td>-->
+				<!--</tr>-->
+				</tbody>
+			</table>
+
+		</div>
+	</div>
+</div>
+
+
+<script>
+    // 页面一加载, 展示数据列表, 每页10条
+    $(document).ready(function(){
+        // 默认查询所有
+        rander(" ");
+    });
+
+    // 渲染数据表格
+    function rander(keyword) {
+        // 定义全局 分页属性
+        $.ajax({
+            //请求方式
+            type : "POST",
+            //请求的媒体类型
+            contentType: "application/json;charset=UTF-8",
+            //请求地址
+            url : "/user/list",
+            //数据，json字符串
+            data : keyword,
+            //请求成功
+            success : function(result) {
+                console.log(result);
+                var text = "";
+                $.each(result,function(index,value){
+                    console.log(value);
+                    text+= "<tr ='center'><td>"+value.id+"</td><td>"+value.city+"</td><td>"+value.birthday+"</td><td>"+value.email+"</td>" +
+                        "<td>"+value.isAdmin+"</td><td>"+value.nickname+"</td><td>"+value.telephone+"</td><td>"+value.username+"</td>" +
+                        "<td>"+value.limit+"</td><td>"+
+                        "<button class='button green' onclick='updateUser("+value.id+","+value.isAdmin+")'>提权</button> &nbsp;<button class='button yellow empty' onclick='delUser("+value.id+")'>删除</button></td></tr>";
+                });
+
+                $("#tbody").html(text);
+            },
+            //请求失败，包含具体的错误信息
+            error : function(e){
+                console.log(e.status);
+                console.log(e.responseText);
+            }
+        });
+    }
+
+    // 搜索
+    function search() {
+        // 获取搜索关键字
+        var keyword = $("#keyword").val();
+        // 搜索结果渲染表格
+        rander(keyword);
+    }
+
+    // 编辑
+    function updateUser(id,isAdmin) {
+        console.log("update reader"+id);
+        if (isAdmin == 1) {
+            javaex.message({
+                content : "已经是管理员权限!",
+                type : "error"
+            });
+        }else if (isAdmin == 0) {
+            $.ajax({
+                //请求方式
+                type : "POST",
+                //请求的媒体类型
+                contentType: "application/json;charset=UTF-8",
+                //请求地址
+                url : "/user/update",
+                //数据，json字符串
+                data : JSON.stringify({"id":id,"isAdmin": 1}),
+                //请求成功
+                success : function(result) {
+                    console.log(result);
+                    if (result == 200) {
+                        javaex.message({
+                            content : "提升至管理员权限成功!",
+                            type : "success"
+                        });
+
+                        // 跳转至列表
+                        setTimeout(function(){window.location.href="/user/user-list";},1500)
+                    }
+
+                },
+                //请求失败，包含具体的错误信息
+                error : function(e){
+                    console.log(e.status);
+                    console.log(e.responseText);
+                }
+            });
+        }
+    }
+
+    // 删除
+    function delUser(id) {
+        console.log("delete reader"+id);
+        javaex.confirm({
+            content : "确定要删除么",
+            callback : "delCallback("+id+")"
+        });
+    }
+
+    function delCallback(id) {
+        // ajax
+        $.get("/user/delete",{"id": id},
+            function(data){
+                if (data == 200) {
+                    javaex.message({
+                        content : "删除成功",
+                        type : "success"
+                    });
+
+                    // 删除成功刷新页面
+                    setTimeout(function(){window.location.reload();},1500)
+
+                }
+            });
+        // 如果你想阻止弹出层关闭，直接 return false; 即可
+        //return false;
+    }
+</script>
+</body>
+</html>
+```
 
